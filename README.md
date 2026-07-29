@@ -22,6 +22,19 @@ Website: [https://www.ernu.eu](https://www.ernu.eu)
 |---|---|---|
 | [Proxy Disk Report](scripts/monitoring/proxy-disk-report/) | Generates daily Linux disk and inode reports, shows a colored HTML report in the email body, attaches the same HTML report and delivers through Postfix. | [README](scripts/monitoring/proxy-disk-report/README.md) · [PDF guide](scripts/monitoring/proxy-disk-report/docs/ERNU_EU_Ghid_Proxy_Disk_Report_RO.pdf) |
 
+### Security
+
+| Utility | Description | Documentation |
+|---|---|---|
+| [Fail2Ban Utilities](scripts/security/file2ban-utilites/) | Provides controlled unban operations plus styled email and optional Telegram alerts for Fail2Ban events. | [README](scripts/security/file2ban-utilites/README.md) · [PDF guide](scripts/security/file2ban-utilites/docs/ERNU_EU_Ghid_Fail2Ban_Utilities_RO.pdf) |
+
+### Backup and application maintenance
+
+| Utility | Description | Documentation |
+|---|---|---|
+| [Drupal Site Backup](scripts/backup/drupal-site-backup/) | Creates verified MySQL/MariaDB and filesystem backup sets, checksums them and applies retention only to complete sets. | [README](scripts/backup/drupal-site-backup/README.md) |
+| [Drupal Permissions](scripts/backup/drupal-permissions/) | Applies controlled ownership, file/directory modes and SELinux contexts to a Drupal document root. | [README](scripts/backup/drupal-permissions/README.md) |
+
 ## Repository structure
 
 ```text
