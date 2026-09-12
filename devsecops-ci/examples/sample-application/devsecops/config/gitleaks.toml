@@ -1,0 +1,9 @@
+title = "ERNU.EU Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated DevSecOps reports"
+paths = ['''devsecops/reports/''']
+

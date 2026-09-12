@@ -1,0 +1,53 @@
+name: Manual DevSecOps Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_depth:
+        description: Audit depth
+        required: true
+        default: standard
+        type: choice
+        options: [standard, extended]
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    container: semgrep/semgrep:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep scan --config auto --sarif --output semgrep.sarif .
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: semgrep-report, path: semgrep.sarif}
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy.sarif
+          exit-code: '0'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: trivy-report, path: trivy.sarif}
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Gitleaks history audit
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --report-format=sarif --report-path=/repo/gitleaks.sarif --exit-code=0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: gitleaks-report, path: gitleaks.sarif, retention-days: 14}

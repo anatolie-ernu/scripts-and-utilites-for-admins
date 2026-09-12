@@ -1,0 +1,50 @@
+# EXEMPLU INACTIV. Copiați în .github/workflows numai după aprobare.
+name: Recommended Blocking DevSecOps Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep blocking
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/owasp-top-ten
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Trivy blocking
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+      - name: Gitleaks blocking
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --redact
+
+  devsecops-gate:
+    if: always()
+    needs: [sast, supply-chain]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce all mandatory controls
+        run: |
+          test "${{ needs.sast.result }}" = success
+          test "${{ needs.supply-chain.result }}" = success
+
+# În workflow-ul de deployment existent adăugați:
+# needs: devsecops-gate
+# if: needs.devsecops-gate.result == 'success'
+
