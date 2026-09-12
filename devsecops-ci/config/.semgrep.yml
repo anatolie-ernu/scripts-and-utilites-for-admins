@@ -1,0 +1,13 @@
+rules:
+  - id: ernu-no-shell-true-suppression
+    message: Nu ascunde eșecul unui control de securitate cu `|| true`.
+    severity: WARNING
+    languages: [bash]
+    patterns:
+      - pattern-regex: '(semgrep|trivy|gitleaks).*\|\|\s*true'
+  - id: ernu-no-hardcoded-private-key
+    message: Material de cheie privată detectat în cod.
+    severity: ERROR
+    languages: [generic]
+    pattern-regex: '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
+
