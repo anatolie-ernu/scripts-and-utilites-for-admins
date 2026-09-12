@@ -3,6 +3,10 @@
 Acest document este sursa autoritativă pentru cererea ulterioară **„aplică aceeași
 verificare DevSecOps pe repository-ul X”**.
 
+Versiunea țintă recomandată pentru replicare este `recommended-enterprise-v1`,
+descrisă în `RECOMMENDED-ENTERPRISE-STACK.md`. Profilul manual este etapa de
+onboarding și calibrare înainte de activarea controalelor obligatorii.
+
 ## Profil standard: `manual-nonblocking-v1`
 
 La aplicarea profilului se execută obligatoriu următorii pași:
@@ -40,6 +44,10 @@ de bază. Directoarele generate (`vendor`, `node_modules`, `build`, `dist`, arte
 se exclud justificat. Orice trecere la rulare automată sau blocking constituie profil
 nou și necesită aprobare explicită.
 
+După calibrare, profilul țintă include obligatoriu SonarQube Community, Semgrep CE,
+MegaLinter, Trivy, Gitleaks și Reviewdog; ORT este activat pentru compliance/release,
+iar PR-Agent + Ollama poate fi activat pentru review AI self-hosted consultativ.
+
 ## Convenții
 
 - Nume workflow: `Manual DevSecOps Audit`.
@@ -54,4 +62,3 @@ nou și necesită aprobare explicită.
 Versiunea profilului se schimbă numai când se modifică triggerul, setul minim de
 scanere, permisiunile sau contractul artefactelor. Repository-urile onboardate se
 înregistrează în `docs/PILOTS.md` cu data, profilul și particularitățile stackului.
-

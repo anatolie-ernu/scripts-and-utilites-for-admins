@@ -49,6 +49,13 @@ devsecops-ci/
 Pentru integrarea identică a altui repository folosiți profilul autoritativ
 [`manual-nonblocking-v1`](docs/REPOSITORY-ONBOARDING-STANDARD.md).
 
+## Versiunea recomandată pentru replicare
+
+Ținta enterprise este [`recommended-enterprise-v1`](docs/RECOMMENDED-ENTERPRISE-STACK.md):
+SonarQube Community + Semgrep CE + MegaLinter + Trivy + Gitleaks + Reviewdog ca
+bază obligatorie, ORT pentru conformitate și PR-Agent + Ollama pentru review AI
+self-hosted consultativ.
+
 ## Principiu de promovare
 
 În pilot, constatările sunt colectate ca artefacte și nu sunt Required Status Checks.
