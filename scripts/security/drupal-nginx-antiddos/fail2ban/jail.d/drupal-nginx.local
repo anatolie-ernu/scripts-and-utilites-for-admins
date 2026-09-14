@@ -1,0 +1,57 @@
+# =============================================================================
+# drupal-nginx.local
+# Jails pentru site-ul Drupal. Copiati in /etc/fail2ban/jail.d/
+# =============================================================================
+
+[DEFAULT]
+# IP-uri/subnet-uri care NU trebuie banate niciodata (admini, VPN, monitorizare)
+ignoreip = 127.0.0.1/8 ::1
+           # 203.0.113.100  # IP-ul vostru de administrare -- adaugati-l!
+
+# Ban progresiv: fiecare recidiva dubleaza durata banului, pana la 1 saptamana
+bantime.increment = true
+bantime.factor    = 2
+bantime.maxtime   = 1w
+bantime.rndtime   = 30
+
+# -----------------------------------------------------------------------------
+# Nivel 1: rate-limit nginx depasit in mod repetat (semnal "zgomotos")
+# -----------------------------------------------------------------------------
+[nginx-limit-req]
+enabled  = true
+filter   = nginx-limit-req
+logpath  = /var/log/nginx/drupal-error.log
+port     = http,https
+action   = nftables-drupal-ban[name=nginx_limit]
+maxretry = 15
+findtime = 60
+bantime  = 1h
+
+# -----------------------------------------------------------------------------
+# Nivel 2: scanare cunoscuta de cai vulnerabile (WordPress, .env, .git etc)
+# -----------------------------------------------------------------------------
+[nginx-botsearch]
+enabled  = true
+filter   = nginx-botsearch
+logpath  = /var/log/nginx/drupal-access.log
+port     = http,https
+action   = nftables-drupal-ban[name=nginx_bots]
+maxretry = 5
+findtime = 300
+bantime  = 6h
+
+# -----------------------------------------------------------------------------
+# Nivel 3: alerte agregate din procesorul custom de log (semnal "de incredere")
+# maxretry=1 pentru ca scorul e deja calculat/corelat in security_log_processor.py
+# -----------------------------------------------------------------------------
+[drupal-security-events]
+enabled  = true
+filter   = drupal-security-events
+# ATENTIE: aceasta e IESIREA security_log_processor.py, NU logul brut nginx
+# (care se numeste security-events.log si e doar INTRAREA procesorului).
+logpath  = /var/log/nginx/security-alerts.log
+port     = http,https
+action   = nftables-drupal-ban[name=drupal_critical]
+maxretry = 1
+findtime = 120
+bantime  = 24h

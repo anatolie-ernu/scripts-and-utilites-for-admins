@@ -27,6 +27,7 @@ Website: [https://www.ernu.eu](https://www.ernu.eu)
 | Utility | Description | Documentation |
 |---|---|---|
 | [Fail2Ban Utilities](scripts/security/file2ban-utilites/) | Provides controlled unban operations plus styled email and optional Telegram alerts for Fail2Ban events. | [README](scripts/security/file2ban-utilites/README.md) · [PDF guide](scripts/security/file2ban-utilites/docs/ERNU_EU_Ghid_Fail2Ban_Utilities_RO.pdf) |
+| [Drupal + nginx Anti-DDoS](scripts/security/drupal-nginx-antiddos/) | Layered Drupal 10/11 protection with nginx rate limiting, a Python security-event correlator, Fail2Ban and nftables or iptables/ipset. | [README](scripts/security/drupal-nginx-antiddos/README.md) · [RO guide](scripts/security/drupal-nginx-antiddos/docs/IMPLEMENTATION-GUIDE-RO.md) · [PDF](scripts/security/drupal-nginx-antiddos/docs/ERNU_EU_Ghid_Drupal_Nginx_AntiDDoS_RO.pdf) |
 
 ### Backup and application maintenance
 

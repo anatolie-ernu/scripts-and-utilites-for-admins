@@ -1,0 +1,20 @@
+[Unit]
+Description=Drupal nginx security log correlator (custom app log processing)
+After=nginx.service
+Wants=nginx.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/drupal-antiddos/scripts/security_log_processor.py \
+    --log-path /var/log/nginx/security-events.log \
+    --output-path /var/log/nginx/security-alerts.log
+Restart=always
+RestartSec=3
+User=www-data
+Group=adm
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/nginx
+
+[Install]
+WantedBy=multi-user.target

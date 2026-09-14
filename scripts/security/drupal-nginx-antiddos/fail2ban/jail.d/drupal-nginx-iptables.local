@@ -1,0 +1,45 @@
+# =============================================================================
+# drupal-nginx-iptables.local
+# IDENTIC cu drupal-nginx.local, dar foloseste actiunea iptables-drupal-ban
+# in loc de nftables-drupal-ban. Folositi UN SINGUR fisier dintre cele doua
+# (nu copiati ambele in /etc/fail2ban/jail.d/ simultan -- ar duplica banurile).
+# =============================================================================
+
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1
+           # 203.0.113.100  # IP-ul vostru de administrare -- adaugati-l!
+
+bantime.increment = true
+bantime.factor    = 2
+bantime.maxtime   = 1w
+bantime.rndtime   = 30
+
+[nginx-limit-req]
+enabled  = true
+filter   = nginx-limit-req
+logpath  = /var/log/nginx/drupal-error.log
+port     = http,https
+action   = iptables-drupal-ban[name=nginx_limit]
+maxretry = 15
+findtime = 60
+bantime  = 1h
+
+[nginx-botsearch]
+enabled  = true
+filter   = nginx-botsearch
+logpath  = /var/log/nginx/drupal-access.log
+port     = http,https
+action   = iptables-drupal-ban[name=nginx_bots]
+maxretry = 5
+findtime = 300
+bantime  = 6h
+
+[drupal-security-events]
+enabled  = true
+filter   = drupal-security-events
+logpath  = /var/log/nginx/security-alerts.log
+port     = http,https
+action   = iptables-drupal-ban[name=drupal_critical]
+maxretry = 1
+findtime = 120
+bantime  = 24h

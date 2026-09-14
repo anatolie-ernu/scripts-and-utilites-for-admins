@@ -1,0 +1,38 @@
+#!/usr/sbin/nft -f
+# =============================================================================
+# 00-ddos-base.nft
+# Protectie de baza la nivel de retea (L3/L4), COMPLEMENTARA rate-limiting-ului
+# din nginx (L7). Aplicati aceasta inainte de tabela f2b-drupal creata automat
+# de actiunea fail2ban (nftables-drupal-ban.conf).
+#
+# Incarcare: nft -f /etc/nftables.d/00-ddos-base.nft
+# Persistenta: adaugati "include" in /etc/nftables.conf
+# =============================================================================
+
+table inet ddos_base {
+
+    chain input {
+        type filter hook input priority -20; policy accept;
+
+        # Conexiuni deja stabilite: acceptate rapid, fara re-evaluare
+        ct state established,related accept
+        ct state invalid drop
+
+        iif lo accept
+
+        # --- SYN flood: limiteaza rata de conexiuni noi per IP sursa ---
+        tcp flags syn tcp option maxseg size set 1-536 drop  # semnatura SYN scan clasica
+        ct state new tcp flags syn \
+            meter syn-per-ip { ip saddr limit rate over 60/second burst 20 packets } \
+            drop
+
+        # --- ICMP flood ---
+        ip protocol icmp icmp type echo-request limit rate 10/second accept
+        ip protocol icmp icmp type echo-request drop
+
+        # --- Limiteaza rata conexiunilor noi per IP sursa (L4) ---
+        tcp dport { 80, 443 } ct state new \
+            meter conn-per-ip { ip saddr limit rate over 100/second burst 200 packets } \
+            drop
+    }
+}
