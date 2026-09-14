@@ -2,8 +2,8 @@
 # =============================================================================
 # 00-ddos-base.nft
 # Protectie de baza la nivel de retea (L3/L4), COMPLEMENTARA rate-limiting-ului
-# din nginx (L7). Aplicati aceasta inainte de tabela f2b-drupal creata automat
-# de actiunea fail2ban (nftables-drupal-ban.conf).
+# din nginx (L7). Aplicati aceasta inainte de tabelele f2b_<name> create
+# automat de actiunea Fail2Ban (nftables-drupal-ban.conf).
 #
 # Incarcare: nft -f /etc/nftables.d/00-ddos-base.nft
 # Persistenta: adaugati "include" in /etc/nftables.conf

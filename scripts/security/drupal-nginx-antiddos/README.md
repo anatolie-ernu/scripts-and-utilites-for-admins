@@ -6,10 +6,12 @@ limiting, corelarea evenimentelor de securitate, Fail2Ban si firewall.
 Documentatie:
 
 - [Ghid complet de implementare (RO)](docs/IMPLEMENTATION-GUIDE-RO.md)
+- [Referință de configurare (RO)](docs/CONFIGURATION-REFERENCE-RO.md)
+- [Runbook operațional și rollback (RO)](docs/OPERATIONS-RUNBOOK-RO.md)
+- [Istoricul versiunilor](docs/CHANGELOG.md)
 - [Ghid PDF (RO)](docs/ERNU_EU_Ghid_Drupal_Nginx_AntiDDoS_RO.pdf)
 
-Ghidul Markdown versiunea 1.1 este referința tehnică actuală; PDF-ul versiunea
-1.0 este păstrat ca ediție vizuală publică și sanitizată.
+Documentația Markdown și PDF-ul sunt sincronizate la versiunea 1.1.
 
 > [!CAUTION]
 > Aceasta protectie reduce abuzul L7 si unele flood-uri L3/L4 locale, dar nu
@@ -52,7 +54,7 @@ iptables/
   00-ddos-base-iptables.sh           -> rulare directa + netfilter-persistent save [varianta IPTABLES]
 ```
 
-## Ordine de instalare (rezumat -- detalii in PDF)
+## Ordine de instalare (rezumat -- detalii în ghid)
 
 1. Nivel retea: `nft -f nftables/00-ddos-base.nft` **SAU**
    `bash iptables/00-ddos-base-iptables.sh && netfilter-persistent save`

@@ -16,6 +16,27 @@ Soluția protejează un site Drupal 10/11 pe patru niveluri:
 Un atac volumetric care saturează legătura trebuie oprit de provider, CDN sau
 serviciu de scrubbing. Configurația locală nu înlocuiește protecția upstream.
 
+Fluxul implementat este:
+
+```text
+Client -> firewall L3/L4 -> nginx L7 -> Drupal/PHP-FPM
+                              |
+                              v
+                    security-events.log
+                              |
+                              v
+                 security_log_processor.py
+                              |
+                              v
+                    security-alerts.log
+                              |
+                              v
+                         Fail2Ban
+                              |
+                              v
+                  nftables sau iptables/ipset
+```
+
 ## 2. Cerințe
 
 | Componentă | Recomandare |
@@ -200,3 +221,24 @@ Regulile sunt un baseline și nu sunt universale. Pragurile pot afecta NAT-uri
 cu mulți utilizatori, boți legitimi, scanere autorizate, API-uri sau endpoint-uri
 Drupal cu trafic intens. Testarea, observabilitatea și o cale de rollback sunt
 obligatorii înainte de producție.
+
+## 10. Documente asociate
+
+- `CONFIGURATION-REFERENCE-RO.md` explică fiecare fișier și parametrii ajustabili;
+- `OPERATIONS-RUNBOOK-RO.md` conține verificările zilnice, răspunsul la incidente și rollback-ul;
+- `CHANGELOG.md` păstrează diferențele dintre versiunile publicate;
+- `ERNU_EU_Ghid_Drupal_Nginx_AntiDDoS_RO.pdf` este ediția distribuibilă a acestui ghid.
+
+## 11. Inventarul livrabilului
+
+| Componentă | Fișier principal | Rol |
+|---|---|---|
+| nginx global | `nginx/conf.d/00-security-globals.conf` | zone, limite, timeouts și formate de log |
+| Real IP | `nginx/conf.d/01-realip.conf` | încredere explicită pentru CDN/LB |
+| Virtual host | `nginx/sites-available/drupal-site.conf` | protecție și rutare Drupal |
+| Corelator | `scripts/security_log_processor.py` | scor per IP și alertă normalizată |
+| Test | `scripts/test_attack_simulation.sh` | simulare confirmată numai pe staging |
+| Fail2Ban | `fail2ban/filter.d`, `jail.d`, `action.d` | detecție și ban temporar |
+| nftables | `nftables/00-ddos-base.nft` | baseline L3/L4 recomandat |
+| iptables | `iptables/00-ddos-base-iptables.sh` | alternativă pentru sisteme legacy |
+| systemd | `systemd/drupal-security-processor.service` | execuție și hardening procesor |
