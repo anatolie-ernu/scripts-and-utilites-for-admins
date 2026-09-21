@@ -156,7 +156,8 @@ if ($InstallDefenderTask) {
 
     $taskName = 'WSUS - Auto Approve Defender Updates'
     $taskCommand = 'PowerShell.exe -NoProfile -ExecutionPolicy Bypass -File "' + $workerDest + '"'
-    & schtasks.exe /Create /TN $taskName /SC HOURLY /MO 1 /TR $taskCommand /RU SYSTEM /RL HIGHEST /F | Out-Host
+    $taskStart = (Get-Date).AddMinutes(2).ToString('HH:mm')
+    & schtasks.exe /Create /TN $taskName /SC HOURLY /MO 1 /ST $taskStart /TR $taskCommand /RU SYSTEM /RL HIGHEST /F | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "Failed to create scheduled task: $taskName" }
 
     Write-Host "Installed scheduled task: $taskName" -ForegroundColor Green
