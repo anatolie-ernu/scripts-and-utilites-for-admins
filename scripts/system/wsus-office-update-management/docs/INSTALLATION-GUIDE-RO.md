@@ -546,9 +546,9 @@ rulați întâi configuratorul în mod Preview:
 - SQL Server 2022;
 - Microsoft Defender Antivirus.
 
-Dacă lista este corectă, aplicați politica:
+Dacă lista este corectă, aplicați mai întâi politica fără task-ul Defender:
 
-    .\scripts\09-Configure-WSUS-Production.ps1 -Apply -InstallDefenderTask
+    .\scripts\09-Configure-WSUS-Production.ps1 -Apply
 
 Scriptul:
 
@@ -575,6 +575,10 @@ Auto-approval Defender este intenționat mai strict decât regula standard WSUS 
 Preview pentru worker:
 
     .\scripts\10-Approve-DefenderUpdates.ps1 -WhatIf
+
+Dacă sunt afișate exclusiv update-urile Defender așteptate, instalați task-ul orar prin rerularea configuratorului:
+
+    .\scripts\09-Configure-WSUS-Production.ps1 -Apply -InstallDefenderTask
 
 Worker-ul verifică exact KB-ul, cere ca titlul update-ului să conțină Defender, ignoră update-urile Declined și Superseded și caută implicit doar update-urile sosite în ultimele 60 de zile.
 
