@@ -46,6 +46,79 @@ A large Updates item count is metadata processing. It does not mean every update
 
 This is normal while the first synchronization is still in progress. It reports the last completed synchronization.
 
+## Synchronization fails with UssCommunicationError although TCP 443 works
+
+Typical symptom:
+
+    Result : Failed
+    Error  : UssCommunicationError
+
+with an ErrorText similar to:
+
+    WebException: Unable to connect to the remote server
+    ... <Microsoft-IP>:443
+    ... ServerSyncProxy.GetUpdateData(...)
+
+Do not assume that WSUS/WID/SUSDB is broken if post-install succeeded and SUSDB is ONLINE.
+
+Validate in this order:
+
+1. Microsoft Update endpoint:
+
+       $config = $wsus.GetConfiguration()
+       $config.MUUrl
+
+2. Direct TCP connectivity:
+
+       Test-NetConnection sws.update.microsoft.com -Port 443
+
+3. WSUS proxy configuration:
+
+       $config | Select-Object UseProxy,ProxyName,ProxyServerPort,AnonymousProxyAccess
+
+4. WinHTTP:
+
+       netsh winhttp show proxy
+
+5. TLS 1.2 in SCHANNEL/WSUS log:
+
+       Select-String -Path "C:\Program Files\Update Services\LogFiles\SoftwareDistribution.log" -Pattern "TLS 1.2|SCHANNEL Protocol" |
+         Select-Object -Last 20
+
+6. .NET Framework v4 strong crypto/system-default TLS:
+
+       $paths = @(
+           'HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319',
+           'HKLM:\SOFTWARE\WOW6432Node\Microsoft\.NETFramework\v4.0.30319'
+       )
+
+       foreach ($p in $paths) {
+           Get-ItemProperty $p -ErrorAction SilentlyContinue |
+             Select-Object SchUseStrongCrypto,SystemDefaultTlsVersions
+       }
+
+Expected:
+
+    SchUseStrongCrypto       = 1
+    SystemDefaultTlsVersions = 1
+
+If missing:
+
+    foreach ($p in $paths) {
+        New-ItemProperty -Path $p -Name SchUseStrongCrypto -Value 1 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $p -Name SystemDefaultTlsVersions -Value 1 -PropertyType DWord -Force | Out-Null
+    }
+
+Then restart:
+
+    Restart-Service WsusService
+    Restart-Service W3SVC
+
+A successful Test-NetConnection proves only that a TCP connection could be opened at that moment. It does not prove that the .NET Framework process used by WSUS is selecting the correct TLS defaults for long-running synchronization.
+
+If multiple synchronization attempts fail against different Microsoft IP addresses while later TCP/TLS tests to those addresses succeed, investigate .NET TLS defaults and intermittent network/security inspection before changing SUSDB or reinstalling WSUS again.
+
+Do not permanently whitelist individual Microsoft Update IP addresses. Use Microsoft Update/WSUS service domains according to current Microsoft guidance.
 ## Windows 11 feature upgrade does not appear
 
 Verify:
