@@ -14,7 +14,8 @@ $destMdf = Join-Path $Destination 'SUSDB.mdf'
 $destLdf = Join-Path $Destination 'SUSDB_log.ldf'
 
 New-Item -ItemType Directory -Path $Destination -Force | Out-Null
-& icacls.exe $Destination /grant "\${widAccount}:(OI)(CI)F" | Out-Host
+$acl = $widAccount + ':(OI)(CI)F'
+& icacls.exe $Destination /grant $acl | Out-Host
 
 $conn = New-Object System.Data.SqlClient.SqlConnection
 $conn.ConnectionString = "Data Source=$widPipe;Initial Catalog=master;Integrated Security=SSPI;"
