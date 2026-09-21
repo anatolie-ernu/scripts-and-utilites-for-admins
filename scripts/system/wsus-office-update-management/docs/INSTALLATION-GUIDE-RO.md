@@ -219,7 +219,117 @@ Automatizare:
 
     .\scripts\05-Configure-WSUS.ps1 -Languages en,ro,ru
 
-## 13. Prima sincronizare
+## 13. Validarea TLS/.NET înainte de prima sincronizare
+
+Pe Windows Server 2022, WSUS poate avea acces TCP 443 și handshake TLS 1.2 funcțional, dar sincronizarea să eșueze cu:
+
+    Result    : Failed
+    Error     : UssCommunicationError
+    ErrorText : WebException: Unable to connect to the remote server
+
+Simptomul poate apărea intermitent și către IP-uri Microsoft diferite, în timp ce:
+
+    Test-NetConnection sws.update.microsoft.com -Port 443
+
+returnează:
+
+    TcpTestSucceeded : True
+
+Acest lucru nu validează complet stack-ul .NET folosit de WSUS. Verificați și setările .NET Framework v4 pentru utilizarea criptografiei puternice și a versiunii TLS implicite a sistemului.
+
+Verificare:
+
+    $paths = @(
+        'HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\.NETFramework\v4.0.30319'
+    )
+
+    foreach ($p in $paths) {
+        Write-Host "`n$p"
+        Get-ItemProperty $p -ErrorAction SilentlyContinue |
+            Select-Object SchUseStrongCrypto,SystemDefaultTlsVersions
+    }
+
+Ținta:
+
+    SchUseStrongCrypto       = 1
+    SystemDefaultTlsVersions = 1
+
+Dacă valorile lipsesc sau sunt 0, setați-le în ambele ramuri .NET:
+
+    foreach ($p in $paths) {
+        New-ItemProperty -Path $p -Name SchUseStrongCrypto -Value 1 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $p -Name SystemDefaultTlsVersions -Value 1 -PropertyType DWord -Force | Out-Null
+    }
+
+Reîncărcați procesele WSUS/IIS:
+
+    Restart-Service WsusService
+    Restart-Service W3SVC
+
+Verificare:
+
+    Get-Service WsusService,W3SVC |
+      Select-Object Name,Status,StartType
+
+Ambele servicii trebuie să fie Running.
+
+Pentru diagnostic suplimentar, verificați WinHTTP:
+
+    netsh winhttp show proxy
+
+Într-un scenariu fără proxy, rezultatul așteptat este:
+
+    Direct access (no proxy server).
+
+Verificați și endpoint-ul WSUS:
+
+    $config = $wsus.GetConfiguration()
+    $config.MUUrl
+
+Exemplu:
+
+    https://sws.update.microsoft.com
+
+Dacă sincronizarea a eșuat către un IP Microsoft, testați doar ca diagnostic:
+
+    Test-NetConnection <IP> -Port 443
+
+Nu creați whitelist-uri permanente după IP. Endpoint-urile Microsoft Update pot folosi adrese diferite în timp; regulile de firewall trebuie proiectate după domeniile/serviciile Microsoft Update permise.
+
+Test TLS 1.2 repetat, util pentru a diferenția un blocaj TCP/TLS simplu de o problemă specifică WSUS/.NET:
+
+    $Targets = @('203.0.113.10','203.0.113.11')   # exemple RFC 5737
+
+    foreach ($IP in $Targets) {
+        1..20 | ForEach-Object {
+            $tcp = New-Object System.Net.Sockets.TcpClient
+            try {
+                $async = $tcp.BeginConnect($IP,443,$null,$null)
+                if (-not $async.AsyncWaitHandle.WaitOne(5000)) { throw 'TCP timeout' }
+                $tcp.EndConnect($async)
+
+                $ssl = New-Object System.Net.Security.SslStream($tcp.GetStream(),$false)
+                $ssl.AuthenticateAsClient(
+                    'sws.update.microsoft.com',
+                    $null,
+                    [System.Security.Authentication.SslProtocols]::Tls12,
+                    $false
+                )
+
+                Write-Host "$_ OK TLS=$($ssl.SslProtocol)"
+                $ssl.Dispose()
+                $tcp.Dispose()
+            }
+            catch {
+                Write-Host "$_ FAILED $($_.Exception.Message)"
+                $tcp.Dispose()
+            }
+        }
+    }
+
+Dacă TCP/TLS este stabil, WinHTTP este direct, iar WSUS continuă să eșueze, capturați traficul pe server și firewall în timpul sincronizării înainte de alte modificări.
+## 14. Prima sincronizare
 
 Pe un WSUS nou trebuie întâi sincronizată metadata:
 
@@ -240,7 +350,7 @@ GetLastSynchronizationInfo poate raporta NeverRun cât timp prima sincronizare �
 
 După finalizare, statusul ajunge la NotProcessing și ultima sincronizare trebuie să fie reușită.
 
-## 14. Produse WSUS țintă
+## 15. Produse WSUS țintă
 
 După prima sincronizare listați toate produsele și verificați denumirile exacte:
 
@@ -258,7 +368,7 @@ După prima sincronizare listați toate produsele și verificați denumirile exa
 
 Pentru Windows 11 nu confundați produsul principal cu categoriile Dynamic Update sau Drivers.
 
-## 15. Classifications
+## 16. Classifications
 
 Se activează:
 
@@ -289,7 +399,7 @@ Aplicare:
 
 După schimbarea selecției, sincronizați din nou.
 
-## 16. SQL Server 2017-2022
+## 17. SQL Server 2017-2022
 
 SQL Server servicing este disponibil prin Microsoft Update / WSUS. Înainte de approval:
 
@@ -302,7 +412,7 @@ SQL Server servicing este disponibil prin Microsoft Update / WSUS. Înainte de a
 
 Nu tratați SQL Server ca un workstation update generic.
 
-## 17. Grupuri și rollout
+## 18. Grupuri și rollout
 
 Structură recomandată:
 
@@ -325,7 +435,7 @@ Flux:
       -> validare
       -> Production
 
-## 18. GPO pentru Windows
+## 19. GPO pentru Windows
 
 Exemplu:
 
@@ -340,7 +450,7 @@ Configurați cel puțin:
 
 Evitați politici conflictuale WSUS/WUfB. Dacă TargetReleaseVersion este setat la o versiune veche, feature upgrade-ul poate fi blocat intenționat.
 
-## 19. Microsoft Office - modelul corect
+## 20. Microsoft Office - modelul corect
 
 Office Professional Plus 2019, Office LTSC 2021 și Office LTSC 2024 folosesc Click-to-Run. WSUS singur nu distribuie build-urile Office.
 
@@ -352,13 +462,13 @@ Flux:
       -> SMB share
       -> Office clients
 
-## 20. Starea suportului Office
+## 21. Starea suportului Office
 
 - Office 2019 este legacy și a ieșit din suport normal. Repository-ul 2019 este păstrat pentru inventar existent și migrare.
 - Office LTSC 2021 ajunge la finalul suportului în octombrie 2026; trebuie planificată migrarea.
 - Office LTSC 2024 este ținta LTSC on-premises preferată în acest design.
 
-## 21. Structura Office repository
+## 22. Structura Office repository
 
     D:\OfficeUpdates\ODT
     D:\OfficeUpdates\Config
@@ -382,7 +492,7 @@ Actualizare repository:
 
 ODT folosește setup.exe /download configuration.xml.
 
-## 22. Share și GPO Office
+## 23. Share și GPO Office
 
 Exemplu share:
 
@@ -409,7 +519,7 @@ Exemple Update Path:
 
 Pe Office 2019 legacy păstrați sursa 2019 numai până la migrare.
 
-## 23. Verificare Office client
+## 24. Verificare Office client
 
 Dintr-o aplicație Office:
 
@@ -417,7 +527,7 @@ Dintr-o aplicație Office:
 
 Verificați și task-ul Office Automatic Updates 2.0.
 
-## 24. Validare finală
+## 25. Validare finală
 
     .\scripts\07-Validate-WSUS.ps1
 
@@ -449,7 +559,7 @@ Office:
     Office2021 repository - migration planning
     Office2024 repository - LTSC target
 
-## 25. Mentenanță
+## 26. Mentenanță
 
 Planificați:
 
@@ -464,7 +574,7 @@ Planificați:
 
 Nu ștergeți manual fișiere din WsusContent.
 
-## 26. Surse oficiale
+## 27. Surse oficiale
 
 - Microsoft Learn - Deploy Windows Server Update Services: https://learn.microsoft.com/windows-server/administration/windows-server-update-services/deploy/deploy-windows-server-update-services
 - Microsoft Learn - Install the WSUS server role: https://learn.microsoft.com/windows-server/administration/windows-server-update-services/deploy/1-install-the-wsus-server-role
@@ -477,3 +587,6 @@ Nu ștergeți manual fișiere din WsusContent.
 - Microsoft Learn - Install SQL Server servicing updates: https://learn.microsoft.com/sql/database-engine/install-windows/install-sql-server-servicing-updates
 - Microsoft Lifecycle - Office 2019: https://learn.microsoft.com/lifecycle/products/microsoft-office-2019
 - Microsoft Lifecycle - Office LTSC 2021 end of support: https://learn.microsoft.com/lifecycle/announcements/office-ltsc-2021-end-of-support
+
+- Microsoft Learn - .NET Framework TLS best practices: https://learn.microsoft.com/dotnet/framework/network-programming/tls
+- Microsoft Learn - Troubleshoot WSUS import/sync issues: https://learn.microsoft.com/troubleshoot/mem/configmgr/update-management/troubleshoot-wsus-import-sync-issues
