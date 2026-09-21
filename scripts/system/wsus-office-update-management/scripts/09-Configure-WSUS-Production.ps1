@@ -71,7 +71,7 @@ $missingClassifications = @($wantedClassifications | Where-Object {
     -not ($availableClassifications | Where-Object {$_.Classification.Title -eq $wanted})
 })
 
-Write-Host '`nTarget classifications:' -ForegroundColor Cyan
+Write-Host "`nTarget classifications:" -ForegroundColor Cyan
 $wantedClassifications | ForEach-Object { Write-Host "  $_" }
 
 $groupNames = @(
@@ -83,11 +83,11 @@ $groupNames = @(
     'SQL-Production'
 )
 
-Write-Host '`nTarget WSUS groups:' -ForegroundColor Cyan
+Write-Host "`nTarget WSUS groups:" -ForegroundColor Cyan
 $groupNames | ForEach-Object { Write-Host "  $_" }
 
 if (-not $Apply) {
-    Write-Host '`nPREVIEW ONLY. No WSUS settings were changed.' -ForegroundColor Yellow
+    Write-Host "`nPREVIEW ONLY. No WSUS settings were changed." -ForegroundColor Yellow
     if ($missingFamilies.Count -gt 0) {
         Write-Warning ('Missing required product families: ' + ($missingFamilies -join ', '))
     }
@@ -163,7 +163,7 @@ if ($InstallDefenderTask) {
     Write-Host "Worker: $workerDest" -ForegroundColor Green
 }
 
-Write-Host '`n=== Enabled products ===' -ForegroundColor Cyan
+Write-Host "`n=== Enabled products ===" -ForegroundColor Cyan
 Get-WsusProduct | Where-Object Enabled | Select-Object @{N='Product';E={$_.Product.Title}} | Sort-Object Product | Format-Table -AutoSize
 
 Write-Host '=== Enabled classifications ===' -ForegroundColor Cyan
