@@ -527,7 +527,74 @@ Dintr-o aplicație Office:
 
 Verificați și task-ul Office Automatic Updates 2.0.
 
-## 25. Validare finală
+## 25. Automatizarea politicii WSUS de producție
+
+După ce sincronizarea inițială se termină cu:
+
+    Result : Succeeded
+
+rulați întâi configuratorul în mod Preview:
+
+    .\scripts\09-Configure-WSUS-Production.ps1
+
+În acest mod nu se schimbă nimic. Scriptul afișează produsele pe care le-a identificat pentru:
+
+- Windows 11;
+- Windows Server 2022;
+- SQL Server 2017;
+- SQL Server 2019;
+- SQL Server 2022;
+- Microsoft Defender Antivirus.
+
+Dacă lista este corectă, aplicați mai întâi politica fără task-ul Defender:
+
+    .\scripts\09-Configure-WSUS-Production.ps1 -Apply
+
+Scriptul:
+
+- dezactivează produsele WSUS care nu sunt în setul țintă;
+- activează numai produsele identificate și validate;
+- păstrează clasificările Critical Updates, Definition Updates, Security Updates, Update Rollups, Updates și Upgrades;
+- creează grupurile W11-Pilot, W11-Production, Server-Pilot, Server-Production, SQL-Pilot și SQL-Production;
+- configurează implicit șase sincronizări WSUS pe zi;
+- instalează worker-ul Defender în C:\Scripts\WSUS;
+- creează task-ul orar WSUS - Auto Approve Defender Updates.
+
+Auto-approval Defender este intenționat mai strict decât regula standard WSUS bazată doar pe Product + Classification. Worker-ul aprobă numai KB-urile:
+
+    KB2267602   Security Intelligence / baza antivirus
+    KB4052623   Microsoft Defender Antivirus Platform Update
+
+și numai pentru grupurile:
+
+    Server-Pilot
+    Server-Production
+    SQL-Pilot
+    SQL-Production
+
+Preview pentru worker:
+
+    .\scripts\10-Approve-DefenderUpdates.ps1 -WhatIf
+
+Dacă sunt afișate exclusiv update-urile Defender așteptate, instalați task-ul orar prin rerularea configuratorului:
+
+    .\scripts\09-Configure-WSUS-Production.ps1 -Apply -InstallDefenderTask
+
+Worker-ul verifică exact KB-ul, cere ca titlul update-ului să conțină Defender, ignoră update-urile Declined și Superseded și caută implicit doar update-urile sosite în ultimele 60 de zile.
+
+Nu se aprobă automat:
+
+- Windows Server cumulative updates;
+- .NET updates;
+- SQL Server CU/GDR;
+- Windows 11 quality updates;
+- Windows 11 feature upgrades.
+
+Acestea rămân în flux Pilot -> validare -> Production.
+
+Microsoft Defender publică security intelligence sub KB2267602 și platform updates sub KB4052623. Platform updates pot apărea în mai multe pachete în WSUS din cauza rollout-ului gradual.
+
+## 26. Validare finală
 
     .\scripts\07-Validate-WSUS.ps1
 
@@ -559,7 +626,7 @@ Office:
     Office2021 repository - migration planning
     Office2024 repository - LTSC target
 
-## 26. Mentenanță
+## 27. Mentenanță
 
 Planificați:
 
@@ -574,7 +641,7 @@ Planificați:
 
 Nu ștergeți manual fișiere din WsusContent.
 
-## 27. Surse oficiale
+## 28. Surse oficiale
 
 - Microsoft Learn - Deploy Windows Server Update Services: https://learn.microsoft.com/windows-server/administration/windows-server-update-services/deploy/deploy-windows-server-update-services
 - Microsoft Learn - Install the WSUS server role: https://learn.microsoft.com/windows-server/administration/windows-server-update-services/deploy/1-install-the-wsus-server-role
@@ -590,3 +657,5 @@ Nu ștergeți manual fișiere din WsusContent.
 
 - Microsoft Learn - .NET Framework TLS best practices: https://learn.microsoft.com/dotnet/framework/network-programming/tls
 - Microsoft Learn - Troubleshoot WSUS import/sync issues: https://learn.microsoft.com/troubleshoot/mem/configmgr/update-management/troubleshoot-wsus-import-sync-issues
+
+- Microsoft Learn - Microsoft Defender Antivirus security intelligence and product updates: https://learn.microsoft.com/defender-endpoint/microsoft-defender-antivirus-updates

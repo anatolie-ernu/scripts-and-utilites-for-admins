@@ -61,6 +61,8 @@ Example public hostnames use the ernu.sec documentation namespace.
       06-Select-WSUS-Products.ps1
       07-Validate-WSUS.ps1
       08-Update-Office-Repository.ps1
+      09-Configure-WSUS-Production.ps1
+      10-Approve-DefenderUpdates.ps1
     office-configs/
       office2019.xml
       office2021.xml
@@ -79,7 +81,11 @@ Example public hostnames use the ernu.sec documentation namespace.
 9. Run 06-Select-WSUS-Products.ps1.
 10. Synchronize again and approve updates to Pilot groups first.
 11. Run 07-Validate-WSUS.ps1.
-12. Install ODT and use 08-Update-Office-Repository.ps1 for the Office repositories.
+12. Run 09-Configure-WSUS-Production.ps1 in preview mode and review the exact products.
+13. Apply the production policy with `09-Configure-WSUS-Production.ps1 -Apply`.
+14. Validate the Defender worker with `10-Approve-DefenderUpdates.ps1 -WhatIf`.
+15. After reviewing the exact Defender candidates, run `09-Configure-WSUS-Production.ps1 -Apply -InstallDefenderTask` to install the hourly task.
+16. Install ODT and use 08-Update-Office-Repository.ps1 for the Office repositories.
 
 ## Target products and classifications
 
@@ -90,6 +96,7 @@ Products:
 - SQL Server 2017
 - SQL Server 2019
 - SQL Server 2022
+- Microsoft Defender Antivirus
 
 Classifications:
 
@@ -125,3 +132,53 @@ All examples are sanitized:
 - PDF guide: docs/ERNU_EU_Ghid_WSUS_Office_Update_Management_RO.pdf
 
 Copyright © 2026 ERNU.EU. All rights reserved.
+
+
+## Production policy automation
+
+After the initial metadata synchronization finishes successfully, use the production configurator.
+
+Preview only:
+
+    .\scripts\09-Configure-WSUS-Production.ps1
+
+Apply the strict product/classification set, create Pilot/Production groups, and configure six synchronizations per day:
+
+    .\scripts\09-Configure-WSUS-Production.ps1 -Apply
+
+Preview the exact Defender approvals:
+
+    .\scripts\10-Approve-DefenderUpdates.ps1 -WhatIf
+
+Only after the preview is correct, install the hourly Defender approval task:
+
+    .\scripts\09-Configure-WSUS-Production.ps1 -Apply -InstallDefenderTask
+
+The script refuses to apply if the last WSUS synchronization is not `Succeeded`.
+
+Target groups created:
+
+- W11-Pilot
+- W11-Production
+- Server-Pilot
+- Server-Production
+- SQL-Pilot
+- SQL-Production
+
+The Defender worker targets only the server/SQL groups and approves only:
+
+- KB2267602 — Microsoft Defender Antivirus security intelligence;
+- KB4052623 — Microsoft Defender Antivirus platform update.
+
+It does **not** automatically approve Windows cumulative updates, .NET updates, SQL Server CU/GDR updates, Windows 11 quality updates, or Windows 11 feature upgrades.
+
+Manual preview of Defender approvals:
+
+    .\scripts\10-Approve-DefenderUpdates.ps1 -WhatIf
+
+The production worker uses a 60-day arrival window, ignores declined and superseded updates, and requires the update title to contain Defender in addition to the exact KB match.
+
+Official references:
+
+- Microsoft Defender Antivirus updates: https://learn.microsoft.com/defender-endpoint/microsoft-defender-antivirus-updates
+- Approve-WsusUpdate: https://learn.microsoft.com/powershell/module/updateservices/approve-wsusupdate
