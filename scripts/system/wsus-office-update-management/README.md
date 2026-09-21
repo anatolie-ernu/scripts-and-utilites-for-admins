@@ -82,9 +82,10 @@ Example public hostnames use the ernu.sec documentation namespace.
 10. Synchronize again and approve updates to Pilot groups first.
 11. Run 07-Validate-WSUS.ps1.
 12. Run 09-Configure-WSUS-Production.ps1 in preview mode and review the exact products.
-13. Apply the production policy with `09-Configure-WSUS-Production.ps1 -Apply -InstallDefenderTask`.
-14. Validate the Defender worker with `10-Approve-DefenderUpdates.ps1 -WhatIf`, then let the hourly scheduled task approve only KB2267602 and KB4052623.
-15. Install ODT and use 08-Update-Office-Repository.ps1 for the Office repositories.
+13. Apply the production policy with `09-Configure-WSUS-Production.ps1 -Apply`.
+14. Validate the Defender worker with `10-Approve-DefenderUpdates.ps1 -WhatIf`.
+15. After reviewing the exact Defender candidates, run `09-Configure-WSUS-Production.ps1 -Apply -InstallDefenderTask` to install the hourly task.
+16. Install ODT and use 08-Update-Office-Repository.ps1 for the Office repositories.
 
 ## Target products and classifications
 
@@ -141,7 +142,15 @@ Preview only:
 
     .\scripts\09-Configure-WSUS-Production.ps1
 
-Apply the strict product/classification set, create Pilot/Production groups, configure six synchronizations per day, and install the hourly Defender approval task:
+Apply the strict product/classification set, create Pilot/Production groups, and configure six synchronizations per day:
+
+    .\scripts\09-Configure-WSUS-Production.ps1 -Apply
+
+Preview the exact Defender approvals:
+
+    .\scripts\10-Approve-DefenderUpdates.ps1 -WhatIf
+
+Only after the preview is correct, install the hourly Defender approval task:
 
     .\scripts\09-Configure-WSUS-Production.ps1 -Apply -InstallDefenderTask
 
