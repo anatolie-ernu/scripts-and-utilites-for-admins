@@ -33,7 +33,7 @@ Website: [https://www.ernu.eu](https://www.ernu.eu)
 
 | Utility | Description | Documentation |
 |---|---|---|
-| [WSUS + Office Update Management](scripts/system/wsus-office-update-management/) | Rebuilds WSUS on Windows Server with WID, relocates SUSDB and update content to a data volume, targets Windows 11, Windows Server 2022 and SQL Server 2017-2022, and provides a local Office 2019/2021/2024 Click-to-Run update repository workflow. | [README](scripts/system/wsus-office-update-management/README.md) · [RO guide](scripts/system/wsus-office-update-management/docs/INSTALLATION-GUIDE-RO.md) |
+| [WSUS + Office Update Management](scripts/system/wsus-office-update-management/) | Rebuilds WSUS on Windows Server with WID, relocates SUSDB and update content to a data volume, targets Windows 11, Windows Server 2022 and SQL Server 2017-2022, and provides a local Office 2019/2021/2024 Click-to-Run update repository workflow. | [README](scripts/system/wsus-office-update-management/README.md) · [RO guide](scripts/system/wsus-office-update-management/docs/INSTALLATION-GUIDE-RO.md) · [PDF](scripts/system/wsus-office-update-management/docs/ERNU_EU_Ghid_WSUS_Office_Update_Management_RO.pdf) |
 
 ### Backup and application maintenance
 
