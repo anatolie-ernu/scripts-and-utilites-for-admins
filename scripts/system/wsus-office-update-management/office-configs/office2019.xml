@@ -1,0 +1,11 @@
+<Configuration>
+  <Add SourcePath="D:\OfficeUpdates\Office2019" OfficeClientEdition="64" Channel="PerpetualVL2019">
+    <Product ID="ProPlus2019Volume">
+      <Language ID="en-us" />
+      <Language ID="ro-ro" />
+      <Language ID="ru-ru" />
+    </Product>
+  </Add>
+  <Updates Enabled="TRUE" UpdatePath="\\officeupd.ernu.sec\OfficeUpdates\Office2019" Channel="PerpetualVL2019" />
+  <Display Level="None" AcceptEULA="TRUE" />
+</Configuration>
