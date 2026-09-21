@@ -29,6 +29,12 @@ Website: [https://www.ernu.eu](https://www.ernu.eu)
 | [Fail2Ban Utilities](scripts/security/file2ban-utilites/) | Provides controlled unban operations plus styled email and optional Telegram alerts for Fail2Ban events. | [README](scripts/security/file2ban-utilites/README.md) · [PDF guide](scripts/security/file2ban-utilites/docs/ERNU_EU_Ghid_Fail2Ban_Utilities_RO.pdf) |
 | [Drupal + nginx Anti-DDoS](scripts/security/drupal-nginx-antiddos/) | Layered Drupal 10/11 protection with nginx rate limiting, a Python security-event correlator, Fail2Ban and nftables or iptables/ipset. | [README](scripts/security/drupal-nginx-antiddos/README.md) · [RO guide](scripts/security/drupal-nginx-antiddos/docs/IMPLEMENTATION-GUIDE-RO.md) · [PDF](scripts/security/drupal-nginx-antiddos/docs/ERNU_EU_Ghid_Drupal_Nginx_AntiDDoS_RO.pdf) |
 
+### Windows and patch management
+
+| Utility | Description | Documentation |
+|---|---|---|
+| [WSUS + Office Update Management](scripts/system/wsus-office-update-management/) | Rebuilds WSUS on Windows Server with WID, relocates SUSDB and update content to a data volume, targets Windows 11, Windows Server 2022 and SQL Server 2017-2022, and provides a local Office 2019/2021/2024 Click-to-Run update repository workflow. | [README](scripts/system/wsus-office-update-management/README.md) · [RO guide](scripts/system/wsus-office-update-management/docs/INSTALLATION-GUIDE-RO.md) · [PDF](scripts/system/wsus-office-update-management/docs/ERNU_EU_Ghid_WSUS_Office_Update_Management_RO.pdf) |
+
 ### Backup and application maintenance
 
 | Utility | Description | Documentation |

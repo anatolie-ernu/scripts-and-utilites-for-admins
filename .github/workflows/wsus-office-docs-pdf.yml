@@ -1,0 +1,75 @@
+name: Build WSUS Office PDF
+
+on:
+  push:
+    branches:
+      - main
+      - feature/wsus-office-update-management
+    paths:
+      - 'scripts/system/wsus-office-update-management/docs/INSTALLATION-GUIDE-RO.md'
+      - '.github/workflows/wsus-office-docs-pdf.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PDF dependencies
+        run: python -m pip install --disable-pip-version-check markdown weasyprint
+
+      - name: Build PDF
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import markdown
+          from weasyprint import HTML
+
+          src = Path('scripts/system/wsus-office-update-management/docs/INSTALLATION-GUIDE-RO.md')
+          out = src.with_name('ERNU_EU_Ghid_WSUS_Office_Update_Management_RO.pdf')
+          md = src.read_text(encoding='utf-8')
+          body = markdown.markdown(md, extensions=['fenced_code', 'tables'])
+          css = '''
+          @page { size: A4; margin: 18mm 17mm 18mm 17mm; @bottom-right { content: 'Pagina ' counter(page); font-size: 8pt; color: #666; } }
+          body { font-family: DejaVu Sans, sans-serif; font-size: 9.5pt; line-height: 1.45; color: #222; }
+          h1 { color: #123B5D; font-size: 22pt; border-bottom: 2px solid #175A85; padding-bottom: 5px; }
+          h2 { color: #175A85; font-size: 15pt; margin-top: 16px; }
+          h3 { color: #175A85; font-size: 11pt; }
+          code { font-family: DejaVu Sans Mono, monospace; font-size: 8pt; }
+          pre { background: #f3f5f7; border: 1px solid #d7dee5; padding: 8px; white-space: pre-wrap; word-break: break-word; }
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid #cbd5df; padding: 5px; vertical-align: top; }
+          th { background: #e9f0f5; }
+          a { color: #175A85; }
+          '''
+          html = f'''<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body>{body}</body></html>'''
+          HTML(string=html, base_url=str(src.parent.resolve())).write_pdf(str(out))
+          print(out)
+          PY
+
+      - name: Commit generated PDF
+        shell: bash
+        run: |
+          PDF='scripts/system/wsus-office-update-management/docs/ERNU_EU_Ghid_WSUS_Office_Update_Management_RO.pdf'
+          if git diff --quiet -- "$PDF" && git ls-files --error-unmatch "$PDF" >/dev/null 2>&1; then
+            echo 'PDF is already up to date.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$PDF"
+          git commit -m 'docs(wsus): regenerate PDF guide'
+          git push origin "HEAD:$GITHUB_REF_NAME"

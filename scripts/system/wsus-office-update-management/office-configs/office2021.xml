@@ -1,0 +1,11 @@
+<Configuration>
+  <Add SourcePath="D:\OfficeUpdates\Office2021" OfficeClientEdition="64" Channel="PerpetualVL2021">
+    <Product ID="ProPlus2021Volume">
+      <Language ID="en-us" />
+      <Language ID="ro-ro" />
+      <Language ID="ru-ru" />
+    </Product>
+  </Add>
+  <Updates Enabled="TRUE" UpdatePath="\\officeupd.ernu.sec\OfficeUpdates\Office2021" Channel="PerpetualVL2021" />
+  <Display Level="None" AcceptEULA="TRUE" />
+</Configuration>
