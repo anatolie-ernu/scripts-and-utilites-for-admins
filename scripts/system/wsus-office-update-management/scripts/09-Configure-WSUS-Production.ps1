@@ -24,12 +24,20 @@ if ($Apply -and $lastSync.Result -ne 'Succeeded') {
 }
 
 $productRules = [ordered]@{
-    Windows11   = @('^Windows 11$')
-    Server2022  = @('^Microsoft Server operating system-21H2$', '^Windows Server 2022$')
-    SQL2017     = @('^Microsoft SQL Server 2017$')
-    SQL2019     = @('^Microsoft SQL Server 2019$')
-    SQL2022     = @('^Microsoft SQL Server 2022$')
-    Defender    = @('^Microsoft Defender Antivirus$', '^Windows Defender$')
+    Windows11    = @('^Windows 11$')
+    Server2022   = @('^Microsoft Server operating system-21H2$', '^Windows Server 2022$')
+    SQL2017      = @('^Microsoft SQL Server 2017$')
+    SQL2019      = @('^Microsoft SQL Server 2019$')
+    SQL2022      = @('^Microsoft SQL Server 2022$')
+    SSMS17       = @('^Microsoft SQL Server Management Studio v17$')
+    SSMS18       = @('^Microsoft SQL Server Management Studio v18$')
+    SSMS19       = @('^Microsoft SQL Server Management Studio v19$')
+    SSMS20       = @('^Microsoft SQL Server Management Studio v20$')
+    ODBC17       = @('^Microsoft ODBC Driver 17 for SQL Server$')
+    ODBC18       = @('^Microsoft ODBC Driver 18 for SQL Server$')
+    OLEDB18      = @('^Microsoft OLE DB Driver 18 for SQL Server$')
+    OLEDB19      = @('^Microsoft OLE DB Driver 19 for SQL Server$')
+    Defender     = @('^Microsoft Defender Antivirus$', '^Windows Defender$')
 }
 
 $allProducts = @(Get-WsusProduct)
