@@ -162,9 +162,10 @@ if ($InstallDefenderTask) {
     New-Item -ItemType Directory -Path $TaskRoot -Force | Out-Null
     $workerDest = Join-Path $TaskRoot 'Approve-DefenderUpdates.ps1'
     Copy-Item $workerSource $workerDest -Force
+    Unblock-File -Path $workerDest -ErrorAction SilentlyContinue
 
     $taskName = 'WSUS - Auto Approve Defender Updates'
-    $taskCommand = 'PowerShell.exe -NoProfile -ExecutionPolicy Bypass -File "' + $workerDest + '"'
+    $taskCommand = 'PowerShell.exe -NoLogo -NoProfile -NonInteractive -File "' + $workerDest + '"'
     $taskStart = (Get-Date).AddMinutes(2).ToString('HH:mm')
     & schtasks.exe /Create /TN $taskName /SC HOURLY /MO 1 /ST $taskStart /TR $taskCommand /RU SYSTEM /RL HIGHEST /F | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "Failed to create scheduled task: $taskName" }
