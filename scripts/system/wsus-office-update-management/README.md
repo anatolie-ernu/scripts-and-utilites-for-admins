@@ -72,6 +72,7 @@ Example public hostnames use the ernu.sec documentation namespace.
       16-Configure-WSUS-Accelerated-AutoApproval.ps1
       17-Switch-WSUS-AutoApproval-Mode.ps1
       18-Configure-Defender-Definition-AutoApproval.ps1
+      19-WSUS-Needed-Operational-Report.ps1
     office-configs/
       office2019.xml
       office2021.xml
@@ -326,6 +327,38 @@ Apply the rule to already-synchronized matching Defender definition updates as w
     .\scripts\18-Configure-Defender-Definition-AutoApproval.ps1 -Apply -ApplyExisting
 
 The rule is intentionally constrained by both product and classification. It does not approve generic Windows quality updates, upgrades, drivers, SQL CU/GDR, SSMS, ODBC or OLE DB updates.
+
+## Operational Needed report
+
+Use `19-WSUS-Needed-Operational-Report.ps1` to separate operationally useful WSUS status from superseded/cleanup noise.
+
+The report is read-only and creates three categories:
+
+- `NEEDED-ACTIONABLE`: client action is still required, the update is not superseded, and it is not declined;
+- `NEEDED-SUPERSEDED`: at least one client still reports the update as needed, but the update is superseded;
+- `DECLINED-CLEANUP`: the update is already declined; the report preserves its current Needed count for visibility.
+
+The script calculates operational `NeededCount` as:
+
+    NotInstalledCount + DownloadedCount + FailedCount
+
+Run:
+
+    .\scripts\19-WSUS-Needed-Operational-Report.ps1
+
+Default output:
+
+    D:\WSUSReports\Operational\YYYYMMDD-HHMMSS\
+      00-Summary.txt
+      01-Needed-Actionable.csv
+      02-Needed-Superseded.csv
+      03-Declined-Cleanup.csv
+
+To show more rows in the console:
+
+    .\scripts\19-WSUS-Needed-Operational-Report.ps1 -ConsoleRows 100
+
+The script does not approve, decline, delete, or modify updates. Superseded updates are intentionally separated rather than automatically declined.
 
 ## Public-data policy
 
