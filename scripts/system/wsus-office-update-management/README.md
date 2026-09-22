@@ -68,6 +68,9 @@ Example public hostnames use the ernu.sec documentation namespace.
       12-Import-WSUS-Server-GPO-Baseline.ps1
       13-New-WSUS-Server-BaselineV2.ps1
       14-Install-Defender-Client-AutoUpdateTask.ps1
+      15-Configure-WSUS-Pilot-AutoApproval.ps1
+      16-Configure-WSUS-Accelerated-AutoApproval.ps1
+      17-Switch-WSUS-AutoApproval-Mode.ps1
     office-configs/
       office2019.xml
       office2021.xml
@@ -235,6 +238,68 @@ The client worker installs only applicable, WSUS-approved, Broad-channel:
 - KB4052623 - Defender Platform
 
 It never installs general cumulative, .NET, SQL, driver, or feature updates and never forces a reboot.
+
+## Selectable WSUS auto-approval modes
+
+Two supported automatic-approval models are available.
+
+### Option 1 - Conservative
+
+Use `15-Configure-WSUS-Pilot-AutoApproval.ps1`.
+
+Policy:
+
+- Pilot: Critical Updates + Security Updates;
+- Production: manual approval;
+- Upgrades, Drivers, SQL CU/GDR, SSMS/ODBC/OLE DB: manual.
+
+Preview:
+
+    .\scripts\15-Configure-WSUS-Pilot-AutoApproval.ps1
+
+Apply:
+
+    .\scripts\15-Configure-WSUS-Pilot-AutoApproval.ps1 -Apply
+
+### Option 2 - Accelerated
+
+Use `16-Configure-WSUS-Accelerated-AutoApproval.ps1`.
+
+Policy:
+
+- Pilot: Critical Updates + Security Updates + Update Rollups + Updates;
+- Production: Critical Updates + Security Updates;
+- Upgrades: manual;
+- Drivers: manual/disabled;
+- SQL CU/GDR and SQL tooling: manual.
+
+Preview:
+
+    .\scripts\16-Configure-WSUS-Accelerated-AutoApproval.ps1
+
+Apply:
+
+    .\scripts\16-Configure-WSUS-Accelerated-AutoApproval.ps1 -Apply
+
+The generic `Updates` classification may contain preview/optional quality updates. It is intentionally enabled only for Pilot in Accelerated mode.
+
+### Switching modes
+
+Use `17-Switch-WSUS-AutoApproval-Mode.ps1` to disable the managed rules from the other mode and activate the selected mode.
+
+Preview:
+
+    .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1 -Mode Conservative
+
+    .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1 -Mode Accelerated
+
+Apply:
+
+    .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1 -Mode Conservative -Apply
+
+    .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1 -Mode Accelerated -Apply
+
+Add `-ApplyExisting` only after reviewing already-synchronized updates. Switching modes changes future automatic approvals; it does not revoke approvals already granted under the previous mode.
 
 ## Public-data policy
 
