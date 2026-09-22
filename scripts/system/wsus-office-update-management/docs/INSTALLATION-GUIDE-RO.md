@@ -520,6 +520,76 @@ Exemplu rezultat Pilot:
 
 Evitați politici conflictuale WSUS/WUfB. Dacă TargetReleaseVersion este setat la o versiune veche, feature upgrade-ul poate fi blocat intenționat. Nu copiați automat un GPO de workstation către Server/SQL dacă acesta conține setări specifice stațiilor; păstrați baseline-ul comun separat de targeting.
 
+### 20.1. Reutilizarea unui GPO server WSUS existent
+
+Dacă există deja un GPO server-side validat, acesta poate fi folosit drept baseline pentru noile GPO-uri Pilot/Production. Dacă GPO-urile țintă există deja, nu se recomandă `Copy-GPO` peste ele.
+
+Flux recomandat:
+
+    GPO server existent
+      -> Backup source
+      -> Backup GPO-uri țintă
+      -> Import-GPO în obiectele țintă existente
+      -> Reaplicare TargetGroup / TargetGroupEnabled
+      -> Verificare
+      -> Review link-uri OU
+
+Avantajul este că GPO-urile țintă existente sunt reutilizate, iar procedura păstrează separarea dintre identitatea GPO-ului țintă și setările importate.
+
+Script:
+
+    .\scripts\12-Import-WSUS-Server-GPO-Baseline.ps1
+
+Preview:
+
+    .\scripts\12-Import-WSUS-Server-GPO-Baseline.ps1 -SourceGpoName "WSUS Server Baseline"
+
+Aplicare:
+
+    .\scripts\12-Import-WSUS-Server-GPO-Baseline.ps1 -SourceGpoName "WSUS Server Baseline" -Apply
+
+Mapping implicit:
+
+    GPO țintă                                                     TargetGroup
+    ------------------------------------------------------------  -----------------
+    Computer Policy Deploy - WSUS Updates Server-Pilot            Server-Pilot
+    Computer Policy Deploy - WSUS Updates Server-Production       Server-Production
+    Computer Policy Deploy - WSUS Updates SQL-Pilot               SQL-Pilot
+    Computer Policy Deploy - WSUS Updates SQL-Production          SQL-Production
+
+Scriptul:
+
+- verifică existența GPO-ului sursă;
+- verifică existența tuturor GPO-urilor țintă;
+- în modul Preview nu modifică nimic;
+- în modul Apply creează backup cu timestamp pentru sursă și toate țintele;
+- importă setările sursei în fiecare GPO țintă existent;
+- reaplică `TargetGroup` specific fiecărui GPO;
+- reaplică `TargetGroupEnabled=1`;
+- afișează la final `TargetGroup`, `TargetGroupEnabled`, `WUServer` și `WUStatusServer`;
+- nu creează link-uri OU și nu mută automat GPO-urile între OU-uri.
+
+Directorul implicit pentru backup este:
+
+    C:\GPO-Backup\WSUS\Server-GPO-Migration-YYYYMMDD-HHMMSS
+
+După import, verificați în Group Policy Management:
+
+- link-ul GPO-ului către OU-ul corect;
+- Security Filtering;
+- WMI Filtering;
+- Enforced / Block Inheritance;
+- ordinea link-urilor dacă există mai multe GPO-uri care setează Windows Update.
+
+Verificare PowerShell:
+
+    Get-GPRegistryValue -Name "<GPO>" -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" |
+      Where-Object { $_.ValueName -in @("WUServer","WUStatusServer","TargetGroup","TargetGroupEnabled") } |
+      Select-Object ValueName,Value
+
+Pentru Server și SQL, baseline-ul server-side trebuie revizuit separat de cel pentru Windows 11 workstation. Nu importați setări specifice workstation într-un GPO server fără validare.
+
+
 ## 21. Microsoft Office - modelul corect
 
 Office Professional Plus 2019, Office LTSC 2021 și Office LTSC 2024 folosesc Click-to-Run. WSUS singur nu distribuie build-urile Office.
