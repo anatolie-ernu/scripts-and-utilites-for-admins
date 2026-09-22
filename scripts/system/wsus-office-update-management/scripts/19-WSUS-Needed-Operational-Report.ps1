@@ -167,18 +167,20 @@ Set-Content -Path $summaryTxt -Value $summaryText -Encoding UTF8
 
 Write-Host ''
 Write-Host '=== Summary ===' -ForegroundColor Cyan
-[PSCustomObject]@{
-    Category = 'NEEDED-ACTIONABLE'
-    Count    = $actionable.Count
-},
-[PSCustomObject]@{
-    Category = 'NEEDED-SUPERSEDED'
-    Count    = $superseded.Count
-},
-[PSCustomObject]@{
-    Category = 'DECLINED-CLEANUP'
-    Count    = $declined.Count
-} | Format-Table -AutoSize
+@(
+    [PSCustomObject]@{
+        Category = 'NEEDED-ACTIONABLE'
+        Count    = $actionable.Count
+    }
+    [PSCustomObject]@{
+        Category = 'NEEDED-SUPERSEDED'
+        Count    = $superseded.Count
+    }
+    [PSCustomObject]@{
+        Category = 'DECLINED-CLEANUP'
+        Count    = $declined.Count
+    }
+) | Format-Table -AutoSize
 
 Write-Host ''
 Write-Host "=== NEEDED-ACTIONABLE - Top $ConsoleRows ===" -ForegroundColor Green
