@@ -64,6 +64,8 @@ Example public hostnames use the ernu.sec documentation namespace.
       08-Update-Office-Repository.ps1
       09-Configure-WSUS-Production.ps1
       10-Approve-DefenderUpdates.ps1
+      11-Configure-WSUS-Targeting-GPOs.ps1
+      12-Import-WSUS-Server-GPO-Baseline.ps1
     office-configs/
       office2019.xml
       office2021.xml
@@ -157,6 +159,36 @@ Apply after reviewing the mapping:
     .\scripts\11-Configure-WSUS-Targeting-GPOs.ps1 -Apply
 
 The helper creates thin targeting GPOs only; it does not link them to OUs. Link each GPO manually to the intended Pilot/Production OU. Do not clone workstation-only settings into server or SQL OUs without review.
+
+## Reusing an existing server WSUS GPO baseline
+
+When an organization already has a validated server-side WSUS GPO and the new Pilot/Production targeting GPOs already exist, do **not** use `Copy-GPO` over those existing targets.
+
+Use a backup/import workflow instead:
+
+1. Back up the source server WSUS GPO.
+2. Back up every existing target GPO.
+3. Import the source policy settings into each existing target GPO with `Import-GPO`.
+4. Reapply the target-specific `TargetGroup` and `TargetGroupEnabled=1` values.
+5. Verify `WUServer`, `WUStatusServer`, `TargetGroup`, and `TargetGroupEnabled`.
+6. Review OU links in Group Policy Management before rollout.
+
+Preview:
+
+    .\scripts\12-Import-WSUS-Server-GPO-Baseline.ps1 -SourceGpoName "WSUS Server Baseline"
+
+Apply:
+
+    .\scripts\12-Import-WSUS-Server-GPO-Baseline.ps1 -SourceGpoName "WSUS Server Baseline" -Apply
+
+Default target mapping:
+
+- Computer Policy Deploy - WSUS Updates Server-Pilot -> Server-Pilot
+- Computer Policy Deploy - WSUS Updates Server-Production -> Server-Production
+- Computer Policy Deploy - WSUS Updates SQL-Pilot -> SQL-Pilot
+- Computer Policy Deploy - WSUS Updates SQL-Production -> SQL-Production
+
+The helper refuses to apply if a target GPO is missing, creates timestamped rollback backups, imports settings into the existing target GPO objects, and restores the target-specific WSUS group values after import.
 
 ## Public-data policy
 
