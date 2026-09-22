@@ -4,10 +4,19 @@ param(
     [switch]$Apply,
     [switch]$ApplyExisting,
 
-    [string]$WindowsPilotGroup = 'Windows-11-Pro-Pilot',
-    [string]$ServerPilotGroup  = 'Server-Pilot',
+    [string]$WindowsPilotGroup      = 'Windows-11-Pro-Pilot',
+    [string]$WindowsProductionGroup = 'Windows-11-Pro-Production',
+    [string]$ServerPilotGroup       = 'Server-Pilot',
+    [string]$ServerProductionGroup  = 'Server-Production',
 
-    [string[]]$Classifications = @(
+    [string[]]$PilotClassifications = @(
+        'Critical Updates',
+        'Security Updates',
+        'Update Rollups',
+        'Updates'
+    ),
+
+    [string[]]$ProductionClassifications = @(
         'Critical Updates',
         'Security Updates'
     )
@@ -18,19 +27,36 @@ Import-Module UpdateServices
 
 $wsus = Get-WsusServer
 
+$windowsProducts = @('Windows 11')
+$serverProducts = @(
+    'Microsoft Server operating system-21H2',
+    'Microsoft Server Operating System-24H2'
+)
+
 $ruleDefinitions = @(
     [PSCustomObject]@{
-        RuleName    = 'AutoApprove - Windows11 Pilot - Critical Security'
-        Products    = @('Windows 11')
-        TargetGroup = $WindowsPilotGroup
+        RuleName        = 'AutoApprove - Windows11 Pilot - Quality'
+        Products        = $windowsProducts
+        Classifications = $PilotClassifications
+        TargetGroup     = $WindowsPilotGroup
     },
     [PSCustomObject]@{
-        RuleName    = 'AutoApprove - Server Pilot - Critical Security'
-        Products    = @(
-            'Microsoft Server operating system-21H2',
-            'Microsoft Server Operating System-24H2'
-        )
-        TargetGroup = $ServerPilotGroup
+        RuleName        = 'AutoApprove - Server Pilot - Quality'
+        Products        = $serverProducts
+        Classifications = $PilotClassifications
+        TargetGroup     = $ServerPilotGroup
+    },
+    [PSCustomObject]@{
+        RuleName        = 'AutoApprove - Windows11 Production - Critical Security'
+        Products        = $windowsProducts
+        Classifications = $ProductionClassifications
+        TargetGroup     = $WindowsProductionGroup
+    },
+    [PSCustomObject]@{
+        RuleName        = 'AutoApprove - Server Production - Critical Security'
+        Products        = $serverProducts
+        Classifications = $ProductionClassifications
+        TargetGroup     = $ServerProductionGroup
     }
 )
 
@@ -76,15 +102,29 @@ function Get-ExactTargetGroup {
     return $group
 }
 
-Write-Host '=== WSUS Pilot Auto-Approval Rules ===' -ForegroundColor Cyan
+function Resolve-Classifications {
+    param([string[]]$Titles)
+
+    return @(
+        foreach ($title in $Titles) {
+            Get-ExactClassification -Title $title
+        }
+    )
+}
+
+Write-Host '=== WSUS Automatic Approval Ring Policy ===' -ForegroundColor Cyan
 Write-Host "Mode: $(if ($Apply) { 'APPLY' } else { 'PREVIEW' })"
 Write-Host "Apply existing updates now: $ApplyExisting"
-
-$resolvedClassifications = @(
-    foreach ($title in $Classifications) {
-        Get-ExactClassification -Title $title
-    }
-)
+Write-Host ''
+Write-Host 'Policy model:' -ForegroundColor Yellow
+Write-Host '  Pilot      -> Critical + Security + Update Rollups + Updates'
+Write-Host '  Production -> Critical + Security'
+Write-Host '  Upgrades   -> manual'
+Write-Host '  Drivers    -> manual / disabled by product-classification policy'
+Write-Host '  SQL/SSMS/ODBC/OLE DB -> manual'
+Write-Host ''
+Write-Warning 'The WSUS Updates classification can contain non-security preview/optional quality updates. This is intentional for Pilot only. Production does not include the generic Updates classification.'
+Write-Warning 'Critical/Security approvals to Production are immediate at synchronization time; Pilot is not a gate for those two classifications.'
 
 $preview = foreach ($definition in $ruleDefinitions) {
 
@@ -94,7 +134,9 @@ $preview = foreach ($definition in $ruleDefinitions) {
         }
     )
 
+    $resolvedClassifications = Resolve-Classifications -Titles $definition.Classifications
     $resolvedGroup = Get-ExactTargetGroup -Name $definition.TargetGroup
+
     $existingRule = $wsus.GetInstallApprovalRules() |
         Where-Object Name -eq $definition.RuleName
 
@@ -105,7 +147,7 @@ $preview = foreach ($definition in $ruleDefinitions) {
         TargetGroup     = $resolvedGroup.Name
         Exists          = [bool]$existingRule
         Enabled         = if ($existingRule) { $existingRule.Enabled } else { $false }
-        Action          = if ($existingRule) { 'Would update rule conditions and enable it' } else { 'Would create rule and enable it' }
+        Action          = if ($existingRule) { 'Would update conditions and enable' } else { 'Would create and enable' }
     }
 }
 
@@ -138,27 +180,24 @@ foreach ($definition in $ruleDefinitions) {
     }
 
     $classificationCollection = New-Object Microsoft.UpdateServices.Administration.UpdateClassificationCollection
-    foreach ($classification in $resolvedClassifications) {
+    foreach ($classification in (Resolve-Classifications -Titles $definition.Classifications)) {
         [void]$classificationCollection.Add($classification)
     }
 
     $categoryCollection = New-Object Microsoft.UpdateServices.Administration.UpdateCategoryCollection
     foreach ($title in $definition.Products) {
-        $product = Get-ExactProduct -Title $title
-        [void]$categoryCollection.Add($product)
+        [void]$categoryCollection.Add((Get-ExactProduct -Title $title))
     }
 
     $groupCollection = New-Object Microsoft.UpdateServices.Administration.ComputerTargetGroupCollection
-    $group = Get-ExactTargetGroup -Name $definition.TargetGroup
-    [void]$groupCollection.Add($group)
+    [void]$groupCollection.Add((Get-ExactTargetGroup -Name $definition.TargetGroup))
 
-    if ($PSCmdlet.ShouldProcess($definition.RuleName, 'Configure classifications, products and Pilot target group')) {
+    if ($PSCmdlet.ShouldProcess($definition.RuleName, 'Configure classifications, products and target group')) {
         $rule.SetUpdateClassifications($classificationCollection)
         $rule.SetCategories($categoryCollection)
         $rule.SetComputerTargetGroups($groupCollection)
         $rule.Enabled = $true
         $rule.Save()
-
         Write-Host "Enabled: $($definition.RuleName)" -ForegroundColor Green
     }
 
@@ -173,8 +212,9 @@ foreach ($definition in $ruleDefinitions) {
 Write-Host ''
 Write-Host '=== Final rule verification ===' -ForegroundColor Cyan
 
+$expectedNames = $ruleDefinitions.RuleName
 $wsus.GetInstallApprovalRules() |
-    Where-Object { $_.Name -like 'AutoApprove -* Pilot - Critical Security' } |
+    Where-Object { $expectedNames -contains $_.Name } |
     Sort-Object Name |
     ForEach-Object {
         $rule = $_
@@ -200,6 +240,5 @@ $wsus.GetInstallApprovalRules() |
     }
 
 Write-Host ''
-Write-Host 'Pilot auto-approval rules configured.' -ForegroundColor Green
-Write-Host 'Production approvals remain manual.' -ForegroundColor Yellow
-Write-Host 'SQL CU/GDR approvals remain manual.' -ForegroundColor Yellow
+Write-Host 'Automatic approval ring policy configured.' -ForegroundColor Green
+Write-Host 'Upgrades, Drivers, SQL CU/GDR and SQL tooling remain manual.' -ForegroundColor Yellow
