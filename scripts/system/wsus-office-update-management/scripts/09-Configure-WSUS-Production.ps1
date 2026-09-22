@@ -26,9 +26,9 @@ if ($Apply -and $lastSync.Result -ne 'Succeeded') {
 $productRules = [ordered]@{
     Windows11   = @('^Windows 11$')
     Server2022  = @('^Microsoft Server operating system-21H2$', '^Windows Server 2022$')
-    SQL2017     = @('^SQL Server 2017($|\s)')
-    SQL2019     = @('^SQL Server 2019($|\s)')
-    SQL2022     = @('^SQL Server 2022($|\s)')
+    SQL2017     = @('^Microsoft SQL Server 2017$')
+    SQL2019     = @('^Microsoft SQL Server 2019$')
+    SQL2022     = @('^Microsoft SQL Server 2022$')
     Defender    = @('^Microsoft Defender Antivirus$', '^Windows Defender$')
 }
 
