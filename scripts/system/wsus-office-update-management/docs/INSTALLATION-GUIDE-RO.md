@@ -688,6 +688,111 @@ Validare manuală pe server pilot:
       "C:\Scripts\WSUS\Install-Approved-DefenderUpdates.ps1" -WhatIf
 
 
+### 20.4. Două moduri de auto-approval și comutare controlată
+
+Sunt suportate două modele operaționale.
+
+#### Opțiunea 1 - Conservative
+
+Script:
+
+    .\scripts\15-Configure-WSUS-Pilot-AutoApproval.ps1
+
+Politică:
+
+    Pilot:
+      Critical Updates
+      Security Updates
+
+    Production:
+      Manual approval
+
+    Upgrades:
+      Manual
+
+    Drivers:
+      Manual / disabled
+
+    SQL CU/GDR / SSMS / ODBC / OLE DB:
+      Manual
+
+Preview:
+
+    .\scripts\15-Configure-WSUS-Pilot-AutoApproval.ps1
+
+Aplicare:
+
+    .\scripts\15-Configure-WSUS-Pilot-AutoApproval.ps1 -Apply
+
+#### Opțiunea 2 - Accelerated
+
+Script:
+
+    .\scripts\16-Configure-WSUS-Accelerated-AutoApproval.ps1
+
+Politică:
+
+    Pilot:
+      Critical Updates
+      Security Updates
+      Update Rollups
+      Updates
+
+    Production:
+      Critical Updates
+      Security Updates
+
+    Upgrades:
+      Manual
+
+    Drivers:
+      Manual / disabled
+
+    SQL CU/GDR / SSMS / ODBC / OLE DB:
+      Manual
+
+Clasificarea generică `Updates` poate include update-uri quality preview/opționale. Din acest motiv este permisă automat numai pe Pilot în modul Accelerated.
+
+Preview:
+
+    .\scripts\16-Configure-WSUS-Accelerated-AutoApproval.ps1
+
+Aplicare:
+
+    .\scripts\16-Configure-WSUS-Accelerated-AutoApproval.ps1 -Apply
+
+#### Comutare între cele două opțiuni
+
+Script:
+
+    .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1
+
+Preview Conservative:
+
+    .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1 -Mode Conservative
+
+Preview Accelerated:
+
+    .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1 -Mode Accelerated
+
+Aplicare Conservative:
+
+    .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1 -Mode Conservative -Apply
+
+Aplicare Accelerated:
+
+    .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1 -Mode Accelerated -Apply
+
+Scriptul de switch:
+
+- dezactivează toate regulile administrate de cele două moduri;
+- activează numai regulile modului selectat;
+- poate aplica regulile și peste backlog-ul existent doar cu `-ApplyExisting`;
+- nu revocă aprobările deja acordate anterior.
+
+Important: trecerea din Accelerated în Conservative modifică auto-approval-urile viitoare. Update-urile Production aprobate deja de modul Accelerated rămân aprobate până când administratorul le revocă explicit după review.
+
+
 
 ## 21. Microsoft Office - modelul corect
 
