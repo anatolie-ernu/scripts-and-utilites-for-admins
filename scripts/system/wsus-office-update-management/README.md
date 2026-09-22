@@ -121,6 +121,43 @@ Drivers, Driver Sets and Tools are not enabled by default.
 
 Office 2019 is legacy/out of normal support. Office LTSC 2021 reaches end of support in October 2026. Office LTSC 2024 is the preferred LTSC on-premises target in this guide.
 
+## Client-side targeting GPOs
+
+The recommended WSUS targeting model uses one thin GPO per WSUS target group while keeping common WSUS settings in a separate baseline GPO.
+
+Target groups:
+
+- Windows-11-Pro-Pilot
+- Windows-11-Pro-Production
+- Server-Pilot
+- Server-Production
+- SQL-Pilot
+- SQL-Production
+
+Recommended GPO names:
+
+- Computer Policy Deploy - WSUS Updates Windows-11-Pro-Pilot
+- Computer Policy Deploy - WSUS Updates Windows-11-Pro-Production
+- Computer Policy Deploy - WSUS Updates Server-Pilot
+- Computer Policy Deploy - WSUS Updates Server-Production
+- Computer Policy Deploy - WSUS Updates SQL-Pilot
+- Computer Policy Deploy - WSUS Updates SQL-Production
+
+Each targeting GPO sets only:
+
+- `HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\TargetGroup`
+- `HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\TargetGroupEnabled = 1`
+
+Use the helper in preview mode first:
+
+    .\scripts\11-Configure-WSUS-Targeting-GPOs.ps1
+
+Apply after reviewing the mapping:
+
+    .\scripts\11-Configure-WSUS-Targeting-GPOs.ps1 -Apply
+
+The helper creates thin targeting GPOs only; it does not link them to OUs. Link each GPO manually to the intended Pilot/Production OU. Do not clone workstation-only settings into server or SQL OUs without review.
+
 ## Public-data policy
 
 All examples are sanitized:
@@ -162,8 +199,8 @@ The script refuses to apply if the last WSUS synchronization is not `Succeeded`.
 
 Target groups created:
 
-- W11-Pilot
-- W11-Production
+- Windows-11-Pro-Pilot
+- Windows-11-Pro-Production
 - Server-Pilot
 - Server-Production
 - SQL-Pilot
