@@ -68,6 +68,7 @@ Example public hostnames use the ernu.sec documentation namespace.
       12-Import-WSUS-Server-GPO-Baseline.ps1
       13-New-WSUS-Server-BaselineV2.ps1
       14-Install-Defender-Client-AutoUpdateTask.ps1
+      15-Configure-WSUS-Pilot-AutoApproval.ps1
     office-configs/
       office2019.xml
       office2021.xml
@@ -235,6 +236,39 @@ The client worker installs only applicable, WSUS-approved, Broad-channel:
 - KB4052623 - Defender Platform
 
 It never installs general cumulative, .NET, SQL, driver, or feature updates and never forces a reboot.
+
+## Pilot auto-approval for Critical and Security updates
+
+Pilot groups can receive automatic approvals for only the two low-risk classifications used in the standard rollout:
+
+- Critical Updates
+- Security Updates
+
+Rules created:
+
+- AutoApprove - Windows11 Pilot - Critical Security
+  - Product: Windows 11
+  - Group: Windows-11-Pro-Pilot
+
+- AutoApprove - Server Pilot - Critical Security
+  - Products: Microsoft Server operating system-21H2 and Microsoft Server Operating System-24H2
+  - Group: Server-Pilot
+
+Production approvals remain manual. SQL CU/GDR approvals remain manual. The generic `Updates`, `Upgrades`, and driver classifications are not included in these auto-approval rules.
+
+Preview:
+
+    .\scripts\15-Configure-WSUS-Pilot-AutoApproval.ps1
+
+Create/update and enable the rules for future synchronizations:
+
+    .\scripts\15-Configure-WSUS-Pilot-AutoApproval.ps1 -Apply
+
+Optionally apply the rules immediately to already-synchronized matching updates:
+
+    .\scripts\15-Configure-WSUS-Pilot-AutoApproval.ps1 -Apply -ApplyExisting
+
+Use `-ApplyExisting` only after reviewing the current backlog because it can approve matching existing updates immediately for the Pilot groups.
 
 ## Public-data policy
 
