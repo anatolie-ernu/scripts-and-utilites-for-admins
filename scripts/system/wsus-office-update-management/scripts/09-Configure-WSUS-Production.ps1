@@ -58,7 +58,7 @@ foreach ($family in $productRules.Keys) {
     }
 
     Write-Host "`n[$family]" -ForegroundColor Yellow
-    $matches | Select-Object @{N='Product';E={$_.Product.Title}},Enabled | Sort-Object Product | Format-Table -AutoSize
+    $matches | Select-Object @{N='Product';E={$_.Product.Title}} | Sort-Object Product | Format-Table -AutoSize
     $selectedProducts += $matches
 }
 
@@ -172,11 +172,16 @@ if ($InstallDefenderTask) {
     Write-Host "Worker: $workerDest" -ForegroundColor Green
 }
 
-Write-Host "`n=== Enabled products ===" -ForegroundColor Cyan
-Get-WsusProduct | Where-Object Enabled | Select-Object @{N='Product';E={$_.Product.Title}} | Sort-Object Product | Format-Table -AutoSize
+Write-Host "`n=== Products selected for synchronization ===" -ForegroundColor Cyan
+$subscription = $wsus.GetSubscription()
+$subscription.GetUpdateCategories() |
+    Where-Object { $_.Type -eq [Microsoft.UpdateServices.Administration.UpdateCategoryType]::Product } |
+    Sort-Object Title |
+    Select-Object Title |
+    Format-Table -AutoSize
 
 Write-Host '=== Enabled classifications ===' -ForegroundColor Cyan
-$wsus.GetSubscription().GetUpdateClassifications() | Sort-Object Title | Select-Object Title | Format-Table -AutoSize
+$subscription.GetUpdateClassifications() | Sort-Object Title | Select-Object Title | Format-Table -AutoSize
 
 Write-Host '=== WSUS groups ===' -ForegroundColor Cyan
 $wsus.GetComputerTargetGroups() | Where-Object {$groupNames -contains $_.Name} | Sort-Object Name | Select-Object Name | Format-Table -AutoSize
