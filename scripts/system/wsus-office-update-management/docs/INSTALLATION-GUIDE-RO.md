@@ -447,8 +447,8 @@ Structură recomandată:
 
     All Computers
       Workstations
-        W11-Pilot
-        W11-Production
+        Windows-11-Pro-Pilot
+        Windows-11-Pro-Production
       Servers
         Server-Pilot
         Server-Production
@@ -464,20 +464,61 @@ Flux:
       -> validare
       -> Production
 
-## 20. GPO pentru Windows
+## 20. GPO pentru Windows și client-side targeting
 
-Exemplu:
+Exemplu server WSUS:
 
     http://wsus01.ernu.sec:8530
 
-Configurați cel puțin:
+Configurați într-un GPO comun de bază cel puțin:
 
 - Specify intranet Microsoft update service location;
 - Configure Automatic Updates;
 - politici de restart;
-- sursa pentru Feature Updates și Quality Updates.
+- sursa pentru Feature Updates, Quality Updates, Driver Updates și Other Updates;
+- scan source explicit pe WSUS atunci când mediul folosește Windows 11 și WSUS.
 
-Evitați politici conflictuale WSUS/WUfB. Dacă TargetReleaseVersion este setat la o versiune veche, feature upgrade-ul poate fi blocat intenționat.
+Pentru targeting se recomandă GPO-uri subțiri, separate de baseline-ul WSUS. Numele grupului din GPO trebuie să coincidă cu numele grupului existent în WSUS.
+
+Mapping recomandat:
+
+    WSUS Group                    GPO
+    ---------------------------  --------------------------------------------------------------
+    Windows-11-Pro-Pilot         Computer Policy Deploy - WSUS Updates Windows-11-Pro-Pilot
+    Windows-11-Pro-Production    Computer Policy Deploy - WSUS Updates Windows-11-Pro-Production
+    Server-Pilot                 Computer Policy Deploy - WSUS Updates Server-Pilot
+    Server-Production            Computer Policy Deploy - WSUS Updates Server-Production
+    SQL-Pilot                    Computer Policy Deploy - WSUS Updates SQL-Pilot
+    SQL-Production               Computer Policy Deploy - WSUS Updates SQL-Production
+
+Fiecare GPO de targeting setează numai:
+
+    HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate
+      TargetGroup        = <numele exact al grupului WSUS>
+      TargetGroupEnabled = 1
+
+Pentru creare/actualizare controlată:
+
+    .\scripts\11-Configure-WSUS-Targeting-GPOs.ps1
+
+Preview-ul nu modifică Active Directory. După validare:
+
+    .\scripts\11-Configure-WSUS-Targeting-GPOs.ps1 -Apply
+
+Scriptul creează GPO-urile, dar nu le leagă automat la OU-uri. Link-ul către OU trebuie făcut explicit de administrator, astfel încât un OU Pilot să primească doar GPO-ul Pilot, iar OU-urile Production să primească GPO-ul Production corespunzător.
+
+Pentru validare pe client:
+
+    gpupdate /force
+    reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" /v TargetGroup
+    reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" /v TargetGroupEnabled
+
+Exemplu rezultat Pilot:
+
+    TargetGroup          REG_SZ      Windows-11-Pro-Pilot
+    TargetGroupEnabled   REG_DWORD   0x1
+
+Evitați politici conflictuale WSUS/WUfB. Dacă TargetReleaseVersion este setat la o versiune veche, feature upgrade-ul poate fi blocat intenționat. Nu copiați automat un GPO de workstation către Server/SQL dacă acesta conține setări specifice stațiilor; păstrați baseline-ul comun separat de targeting.
 
 ## 21. Microsoft Office - modelul corect
 
@@ -570,6 +611,7 @@ rulați întâi configuratorul în mod Preview:
 
 - Windows 11;
 - Windows Server 2022;
+- Windows Server 2025;
 - SQL Server 2017;
 - SQL Server 2019;
 - SQL Server 2022;
@@ -584,7 +626,7 @@ Scriptul:
 - dezactivează produsele WSUS care nu sunt în setul țintă;
 - activează numai produsele identificate și validate;
 - păstrează clasificările Critical Updates, Definition Updates, Security Updates, Update Rollups, Updates și Upgrades;
-- creează grupurile W11-Pilot, W11-Production, Server-Pilot, Server-Production, SQL-Pilot și SQL-Production;
+- creează grupurile Windows-11-Pro-Pilot, Windows-11-Pro-Production, Server-Pilot, Server-Production, SQL-Pilot și SQL-Production;
 - configurează implicit șase sincronizări WSUS pe zi;
 - instalează worker-ul Defender în C:\Scripts\WSUS;
 - creează task-ul orar WSUS - Auto Approve Defender Updates.
@@ -647,6 +689,7 @@ Produse:
 
     Windows 11
     Windows Server 2022 catalog category
+    Windows Server 2025 catalog category
     SQL Server 2017
     SQL Server 2019
     SQL Server 2022
