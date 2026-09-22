@@ -2,8 +2,19 @@
 [CmdletBinding()]
 param(
     [string]$OutputDirectory = 'D:\WSUSReports\Operational',
+
     [ValidateRange(1,500)]
-    [int]$ConsoleRows = 25
+    [int]$ConsoleRows = 25,
+
+    [switch]$SendEmail,
+    [string]$SmtpServer,
+    [ValidateRange(1,65535)]
+    [int]$SmtpPort = 25,
+    [switch]$UseSsl,
+    [string]$MailFrom,
+    [string[]]$MailTo,
+    [string]$CredentialPath,
+    [string]$MailSubjectPrefix = '[WSUS]'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,6 +26,25 @@ Write-Host '=== WSUS Needed Operational Report ===' -ForegroundColor Cyan
 Write-Host "Server          : $($wsus.Name)"
 Write-Host "OutputDirectory : $OutputDirectory"
 Write-Host "ConsoleRows     : $ConsoleRows"
+Write-Host "SendEmail       : $SendEmail"
+
+if ($SendEmail) {
+    if ([string]::IsNullOrWhiteSpace($SmtpServer)) {
+        throw 'SmtpServer is required when -SendEmail is used.'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($MailFrom)) {
+        throw 'MailFrom is required when -SendEmail is used.'
+    }
+
+    if (-not $MailTo -or $MailTo.Count -eq 0) {
+        throw 'At least one MailTo recipient is required when -SendEmail is used.'
+    }
+
+    if ($CredentialPath -and -not (Test-Path -LiteralPath $CredentialPath)) {
+        throw "CredentialPath not found: $CredentialPath"
+    }
+}
 
 $updateScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
 $computerScope = New-Object Microsoft.UpdateServices.Administration.ComputerTargetScope
@@ -206,6 +236,95 @@ Write-Host $summaryTxt
 Write-Host $actionableCsv
 Write-Host $supersededCsv
 Write-Host $declinedCsv
+
+if ($SendEmail) {
+    Write-Host ''
+    Write-Host '=== Sending email ===' -ForegroundColor Cyan
+
+    $subject = "$MailSubjectPrefix WSUS Needed Report - $($wsus.Name) - $(Get-Date -Format 'yyyy-MM-dd')"
+
+    $topActionable = @(
+        $actionable |
+            Select-Object -First 10 NeededCount,IsApproved,Classification,KB,Title
+    )
+
+    $htmlRows = if ($topActionable.Count -gt 0) {
+        ($topActionable |
+            ConvertTo-Html -Fragment -Property NeededCount,IsApproved,Classification,KB,Title) -join [Environment]::NewLine
+    }
+    else {
+        '<p>No actionable needed updates.</p>'
+    }
+
+    $body = @"
+<html>
+<body>
+<h2>WSUS Needed Operational Report</h2>
+<p><b>Server:</b> $($wsus.Name)<br/>
+<b>Generated:</b> $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')</p>
+
+<table border="1" cellpadding="5" cellspacing="0">
+<tr><th>Category</th><th>Count</th></tr>
+<tr><td>NEEDED-ACTIONABLE</td><td>$($actionable.Count)</td></tr>
+<tr><td>NEEDED-SUPERSEDED</td><td>$($superseded.Count)</td></tr>
+<tr><td>DECLINED-CLEANUP</td><td>$($declined.Count)</td></tr>
+</table>
+
+<h3>Top actionable updates</h3>
+$htmlRows
+
+<p>Full CSV reports are attached. This report is read-only and does not modify WSUS.</p>
+</body>
+</html>
+"@
+
+    $mail = New-Object System.Net.Mail.MailMessage
+    $smtp = $null
+
+    try {
+        $mail.From = New-Object System.Net.Mail.MailAddress($MailFrom)
+
+        foreach ($recipient in $MailTo) {
+            if (-not [string]::IsNullOrWhiteSpace($recipient)) {
+                [void]$mail.To.Add($recipient.Trim())
+            }
+        }
+
+        $mail.Subject = $subject
+        $mail.Body = $body
+        $mail.IsBodyHtml = $true
+
+        foreach ($attachmentPath in @($summaryTxt,$actionableCsv,$supersededCsv,$declinedCsv)) {
+            [void]$mail.Attachments.Add(
+                (New-Object System.Net.Mail.Attachment($attachmentPath))
+            )
+        }
+
+        $smtp = New-Object System.Net.Mail.SmtpClient($SmtpServer,$SmtpPort)
+        $smtp.EnableSsl = [bool]$UseSsl
+
+        if ($CredentialPath) {
+            $credential = Import-Clixml -LiteralPath $CredentialPath
+            if (-not ($credential -is [System.Management.Automation.PSCredential])) {
+                throw "CredentialPath does not contain a PSCredential: $CredentialPath"
+            }
+
+            $smtp.UseDefaultCredentials = $false
+            $smtp.Credentials = $credential.GetNetworkCredential()
+        }
+        else {
+            $smtp.UseDefaultCredentials = $false
+        }
+
+        $smtp.Send($mail)
+
+        Write-Host "Email sent to: $($MailTo -join ', ')" -ForegroundColor Green
+    }
+    finally {
+        if ($mail) { $mail.Dispose() }
+        if ($smtp) { $smtp.Dispose() }
+    }
+}
 
 Write-Host ''
 Write-Host 'Read-only report completed.' -ForegroundColor Green
