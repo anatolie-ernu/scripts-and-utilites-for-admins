@@ -623,6 +623,8 @@ Acestea rămân în flux Pilot -> validare -> Production.
 
 Microsoft Defender publică security intelligence sub KB2267602 și platform updates sub KB4052623. Platform updates pot apărea în mai multe pachete în WSUS din cauza rollout-ului gradual.
 
+Pentru auto-approval, worker-ul acceptă strict numai titlurile `Current Channel (Broad)` pentru KB2267602 și KB4052623. Sunt excluse automat canalele Preview, Staged, Beta/Prerelease, Internal Only și Packaging Only. `Critical: Time Delay` rămâne exclus din regula automată implicită și poate fi gestionat separat pentru sisteme de tip datacenter care necesită întârziere controlată.
+
 ## 27. Validare finală
 
     .\scripts\07-Validate-WSUS.ps1
