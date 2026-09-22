@@ -84,8 +84,8 @@ Write-Host "`nTarget classifications:" -ForegroundColor Cyan
 $wantedClassifications | ForEach-Object { Write-Host "  $_" }
 
 $groupNames = @(
-    'W11-Pilot',
-    'W11-Production',
+    'Windows-11-Pro-Pilot',
+    'Windows-11-Pro-Production',
     'Server-Pilot',
     'Server-Production',
     'SQL-Pilot',
