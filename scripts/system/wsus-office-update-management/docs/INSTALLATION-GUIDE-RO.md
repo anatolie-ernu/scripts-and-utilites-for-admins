@@ -832,6 +832,54 @@ Regula verifică simultan produsul `Microsoft Defender Antivirus` și clasificar
 
 
 
+### 20.6. Raport operațional WSUS: Needed fără zgomotul Superseded
+
+În consola WSUS un update poate apărea simultan ca `Needed`, `Not approved` și `Superseded`. `Needed` descrie starea raportată de client, iar `Superseded` descrie relația dintre update-uri. Pentru operare zilnică, acestea trebuie separate.
+
+Script:
+
+    .\scripts\19-WSUS-Needed-Operational-Report.ps1
+
+Raportul este read-only și creează trei categorii:
+
+    NEEDED-ACTIONABLE
+      NeededCount > 0
+      IsSuperseded = False
+      IsDeclined = False
+
+    NEEDED-SUPERSEDED
+      NeededCount > 0
+      IsSuperseded = True
+      IsDeclined = False
+
+    DECLINED-CLEANUP
+      IsDeclined = True
+
+`NeededCount` este calculat ca:
+
+    NotInstalledCount + DownloadedCount + FailedCount
+
+Astfel, lista principală pentru acțiune nu mai este amestecată cu update-uri superseded.
+
+Rulare:
+
+    .\scripts\19-WSUS-Needed-Operational-Report.ps1
+
+Output implicit:
+
+    D:\WSUSReports\Operational\YYYYMMDD-HHMMSS\
+      00-Summary.txt
+      01-Needed-Actionable.csv
+      02-Needed-Superseded.csv
+      03-Declined-Cleanup.csv
+
+Pentru mai multe rânduri afișate în consolă:
+
+    .\scripts\19-WSUS-Needed-Operational-Report.ps1 -ConsoleRows 100
+
+Scriptul nu aprobă, nu refuză, nu șterge și nu modifică update-uri. Update-urile superseded sunt doar separate în raport. Decline/cleanup trebuie executat printr-o procedură separată, controlată și cu perioadă de excludere, după validarea faptului că update-urile superseding sunt deja disponibile/deployed.
+
+
 ## 21. Microsoft Office - modelul corect
 
 Office Professional Plus 2019, Office LTSC 2021 și Office LTSC 2024 folosesc Click-to-Run. WSUS singur nu distribuie build-urile Office.
