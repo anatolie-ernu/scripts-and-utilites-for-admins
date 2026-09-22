@@ -247,43 +247,85 @@ Write-Host $actionableCsv
 Write-Host $supersededCsv
 Write-Host $declinedCsv
 
+
 if ($SendEmail) {
     Write-Host ''
     Write-Host '=== Sending email ===' -ForegroundColor Cyan
 
     $subject = "$MailSubjectPrefix WSUS Needed Report - $($wsus.Name) - $(Get-Date -Format 'yyyy-MM-dd')"
 
-    $topActionable = @(
-        $actionable |
-            Select-Object -First 10 NeededCount,IsApproved,Classification,KB,Title
-    )
+    function Convert-SectionToHtml {
+        param(
+            [object[]]$Rows,
+            [string]$Title,
+            [string]$HeaderColor,
+            [int]$Top = 10
+        )
 
-    $htmlRows = if ($topActionable.Count -gt 0) {
-        ($topActionable |
-            ConvertTo-Html -Fragment -Property NeededCount,IsApproved,Classification,KB,Title) -join [Environment]::NewLine
+        $selected = @(
+            $Rows | Select-Object -First $Top NeededCount,IsApproved,Classification,KB,Title
+        )
+
+        if ($selected.Count -eq 0) {
+            $table = '<p style="margin:8px 0 16px 0;">No entries.</p>'
+        }
+        else {
+            $table = ($selected | ConvertTo-Html -Fragment -Property NeededCount,IsApproved,Classification,KB,Title) -join [Environment]::NewLine
+            $table = $table -replace '<table>', '<table style="border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif;font-size:12px;">'
+            $table = $table -replace '<th>', '<th style="border:1px solid #d0d0d0;padding:6px;text-align:left;background:#f3f3f3;">'
+            $table = $table -replace '<td>', '<td style="border:1px solid #d0d0d0;padding:6px;vertical-align:top;">'
+        }
+
+        return @"
+<div style="margin:18px 0;border:1px solid #d0d0d0;border-radius:6px;overflow:hidden;">
+  <div style="background:$HeaderColor;color:#ffffff;padding:10px 12px;font-weight:600;font-size:15px;">
+    $Title ($($Rows.Count))
+  </div>
+  <div style="padding:10px 12px;background:#ffffff;">
+    $table
+  </div>
+</div>
+"@
     }
-    else {
-        '<p>No actionable needed updates.</p>'
-    }
+
+    $actionableHtml = Convert-SectionToHtml -Rows $actionable -Title 'NEEDED-ACTIONABLE' -HeaderColor '#2e7d32'
+    $supersededHtml = Convert-SectionToHtml -Rows $superseded -Title 'NEEDED-SUPERSEDED' -HeaderColor '#ef6c00'
+    $declinedHtml = Convert-SectionToHtml -Rows $declined -Title 'DECLINED-CLEANUP' -HeaderColor '#616161'
 
     $body = @"
 <html>
-<body>
-<h2>WSUS Needed Operational Report</h2>
-<p><b>Server:</b> $($wsus.Name)<br/>
-<b>Generated:</b> $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')</p>
+<body style="font-family:Segoe UI,Arial,sans-serif;background:#f7f7f7;color:#202020;padding:18px;">
+<div style="max-width:1100px;margin:0 auto;background:#ffffff;border:1px solid #dddddd;border-radius:8px;padding:20px;">
+  <h2 style="margin-top:0;">WSUS Needed Operational Report</h2>
 
-<table border="1" cellpadding="5" cellspacing="0">
-<tr><th>Category</th><th>Count</th></tr>
-<tr><td>NEEDED-ACTIONABLE</td><td>$($actionable.Count)</td></tr>
-<tr><td>NEEDED-SUPERSEDED</td><td>$($superseded.Count)</td></tr>
-<tr><td>DECLINED-CLEANUP</td><td>$($declined.Count)</td></tr>
-</table>
+  <p>
+    <b>Server:</b> $($wsus.Name)<br/>
+    <b>Generated:</b> $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+  </p>
 
-<h3>Top actionable updates</h3>
-$htmlRows
+  <table style="border-collapse:collapse;margin:14px 0 20px 0;">
+    <tr>
+      <td style="padding:8px 14px;background:#e8f5e9;border:1px solid #c8e6c9;"><b>NEEDED-ACTIONABLE</b></td>
+      <td style="padding:8px 14px;background:#e8f5e9;border:1px solid #c8e6c9;">$($actionable.Count)</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 14px;background:#fff3e0;border:1px solid #ffe0b2;"><b>NEEDED-SUPERSEDED</b></td>
+      <td style="padding:8px 14px;background:#fff3e0;border:1px solid #ffe0b2;">$($superseded.Count)</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 14px;background:#eeeeee;border:1px solid #dddddd;"><b>DECLINED-CLEANUP</b></td>
+      <td style="padding:8px 14px;background:#eeeeee;border:1px solid #dddddd;">$($declined.Count)</td>
+    </tr>
+  </table>
 
-<p>Full CSV reports are attached. This report is read-only and does not modify WSUS.</p>
+  $actionableHtml
+  $supersededHtml
+  $declinedHtml
+
+  <p style="font-size:11px;color:#666666;margin-top:20px;">
+    Full CSV reports are attached. This report is read-only and does not approve, decline, delete, or otherwise modify WSUS updates.
+  </p>
+</div>
 </body>
 </html>
 "@
@@ -305,9 +347,7 @@ $htmlRows
         $mail.IsBodyHtml = $true
 
         foreach ($attachmentPath in @($summaryTxt,$actionableCsv,$supersededCsv,$declinedCsv)) {
-            [void]$mail.Attachments.Add(
-                (New-Object System.Net.Mail.Attachment($attachmentPath))
-            )
+            [void]$mail.Attachments.Add((New-Object System.Net.Mail.Attachment($attachmentPath)))
         }
 
         $smtp = New-Object System.Net.Mail.SmtpClient($SmtpServer,$SmtpPort)
@@ -327,7 +367,6 @@ $htmlRows
         }
 
         $smtp.Send($mail)
-
         Write-Host "Email sent to: $($mailRecipients -join ', ')" -ForegroundColor Green
     }
     finally {
