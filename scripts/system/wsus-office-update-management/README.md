@@ -10,6 +10,7 @@ The subproject covers:
 
 - Windows 11 quality, security and feature updates;
 - Windows Server 2022 servicing;
+- Windows Server 2025 servicing;
 - Microsoft SQL Server 2017, 2019 and 2022 servicing delivered through Microsoft Update / WSUS;
 - Microsoft Office 2019, Office LTSC 2021 and Office LTSC 2024 local update repositories.
 
@@ -201,3 +202,5 @@ The production policy also enables the following exact Microsoft Update catalog 
 - Microsoft OLE DB Driver 19 for SQL Server
 
 SQL tools and drivers are matched by exact catalog title. The script does not enable generic SQL Server, SQL Feature Pack, older SQL Server releases, SQL Server 2025, or unrelated setup-product categories.
+
+Windows Server 2025 is selected in WSUS through the exact catalog product `Microsoft Server operating system-24H2`. Windows Server 2022 remains `Microsoft Server operating system-21H2`.

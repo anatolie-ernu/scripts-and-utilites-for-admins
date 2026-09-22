@@ -19,6 +19,7 @@ Office Click-to-Run nu este actualizat de WSUS. Fluxul Office este Office CDN ->
 ## 2. Arhitectura țintă
 
     Windows Server 2022
+    Windows Server 2025
       WSUS :8530
       WID / SUSDB
         D:\WSUS\Database\SUSDB.mdf
@@ -361,7 +362,8 @@ După prima sincronizare listați toate produsele și verificați denumirile exa
 Ținta acestui proiect:
 
 - Windows 11;
-- Microsoft Server operating system-21H2 sau categoria reală din catalog pentru Windows Server 2022;
+- Microsoft Server operating system-21H2 pentru Windows Server 2022;
+- Microsoft Server operating system-24H2 pentru Windows Server 2025;
 - SQL Server 2017;
 - SQL Server 2019;
 - SQL Server 2022;
@@ -691,3 +693,5 @@ Nu ștergeți manual fișiere din WsusContent.
 - Microsoft Learn - ODBC Driver support lifecycle: https://learn.microsoft.com/sql/connect/odbc/support-lifecycle
 - Microsoft Learn - OLE DB Driver for SQL Server: https://learn.microsoft.com/sql/connect/oledb/oledb-driver-for-sql-server
 - Microsoft Learn - SSMS support policy: https://learn.microsoft.com/ssms/support-policy
+
+- Microsoft Learn / WSUS catalog note - Windows Server 2025 uses Microsoft Server operating system-24H2 in WSUS.
