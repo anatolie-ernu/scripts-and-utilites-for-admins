@@ -12,7 +12,7 @@ param(
     [int]$SmtpPort = 25,
     [switch]$UseSsl,
     [string]$MailFrom,
-    [string[]]$MailTo,
+    [string]$MailTo,
     [string]$CredentialPath,
     [string]$MailSubjectPrefix = '[WSUS]'
 )
@@ -37,8 +37,18 @@ if ($SendEmail) {
         throw 'MailFrom is required when -SendEmail is used.'
     }
 
-    if (-not $MailTo -or $MailTo.Count -eq 0) {
+    if ([string]::IsNullOrWhiteSpace($MailTo)) {
         throw 'At least one MailTo recipient is required when -SendEmail is used.'
+    }
+
+    $mailRecipients = @(
+        $MailTo -split '[;,]' |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+
+    if ($mailRecipients.Count -eq 0) {
+        throw 'MailTo did not contain a valid recipient.'
     }
 
     if ($CredentialPath -and -not (Test-Path -LiteralPath $CredentialPath)) {
@@ -284,7 +294,7 @@ $htmlRows
     try {
         $mail.From = New-Object System.Net.Mail.MailAddress($MailFrom)
 
-        foreach ($recipient in $MailTo) {
+        foreach ($recipient in $mailRecipients) {
             if (-not [string]::IsNullOrWhiteSpace($recipient)) {
                 [void]$mail.To.Add($recipient.Trim())
             }
@@ -318,7 +328,7 @@ $htmlRows
 
         $smtp.Send($mail)
 
-        Write-Host "Email sent to: $($MailTo -join ', ')" -ForegroundColor Green
+        Write-Host "Email sent to: $($mailRecipients -join ', ')" -ForegroundColor Green
     }
     finally {
         if ($mail) { $mail.Dispose() }
