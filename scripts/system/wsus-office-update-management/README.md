@@ -73,6 +73,7 @@ Example public hostnames use the ernu.sec documentation namespace.
       17-Switch-WSUS-AutoApproval-Mode.ps1
       18-Configure-Defender-Definition-AutoApproval.ps1
       19-WSUS-Needed-Operational-Report.ps1
+      20-Install-WSUS-Needed-Report-Task.ps1
     office-configs/
       office2019.xml
       office2021.xml
@@ -359,6 +360,55 @@ To show more rows in the console:
     .\scripts\19-WSUS-Needed-Operational-Report.ps1 -ConsoleRows 100
 
 The script does not approve, decline, delete, or modify updates. Superseded updates are intentionally separated rather than automatically declined.
+
+## Email delivery and Scheduled Task for the operational report
+
+`19-WSUS-Needed-Operational-Report.ps1` can optionally send the report by SMTP.
+
+The email body is HTML and separates the three operational categories visually:
+
+- green: `NEEDED-ACTIONABLE`;
+- orange: `NEEDED-SUPERSEDED`;
+- gray: `DECLINED-CLEANUP`.
+
+The email also attaches the complete report files:
+
+- `00-Summary.txt`;
+- `01-Needed-Actionable.csv`;
+- `02-Needed-Superseded.csv`;
+- `03-Declined-Cleanup.csv`.
+
+Example manual send through an internal SMTP relay:
+
+    .\scripts\19-WSUS-Needed-Operational-Report.ps1 \
+      -SendEmail \
+      -SmtpServer "smtp.ernu.sec" \
+      -SmtpPort 25 \
+      -MailFrom "wsus-report@ernu.sec" \
+      -MailTo "it@ernu.sec"
+
+Use `20-Install-WSUS-Needed-Report-Task.ps1` to install a daily SYSTEM Scheduled Task.
+
+Preview:
+
+    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 \
+      -SmtpServer "smtp.ernu.sec" \
+      -SmtpPort 25 \
+      -MailFrom "wsus-report@ernu.sec" \
+      -MailTo "it@ernu.sec" \
+      -DailyAt "08:00"
+
+Apply:
+
+    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 \
+      -SmtpServer "smtp.ernu.sec" \
+      -SmtpPort 25 \
+      -MailFrom "wsus-report@ernu.sec" \
+      -MailTo "it@ernu.sec" \
+      -DailyAt "08:00" \
+      -Apply
+
+The default task runs as `SYSTEM` and assumes the SMTP relay accepts mail from the WSUS server without interactive authentication. Do not embed SMTP passwords in the public repository.
 
 ## Public-data policy
 

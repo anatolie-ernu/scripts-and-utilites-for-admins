@@ -2,8 +2,19 @@
 [CmdletBinding()]
 param(
     [string]$OutputDirectory = 'D:\WSUSReports\Operational',
+
     [ValidateRange(1,500)]
-    [int]$ConsoleRows = 25
+    [int]$ConsoleRows = 25,
+
+    [switch]$SendEmail,
+    [string]$SmtpServer,
+    [ValidateRange(1,65535)]
+    [int]$SmtpPort = 25,
+    [switch]$UseSsl,
+    [string]$MailFrom,
+    [string]$MailTo,
+    [string]$CredentialPath,
+    [string]$MailSubjectPrefix = '[WSUS]'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,6 +26,35 @@ Write-Host '=== WSUS Needed Operational Report ===' -ForegroundColor Cyan
 Write-Host "Server          : $($wsus.Name)"
 Write-Host "OutputDirectory : $OutputDirectory"
 Write-Host "ConsoleRows     : $ConsoleRows"
+Write-Host "SendEmail       : $SendEmail"
+
+if ($SendEmail) {
+    if ([string]::IsNullOrWhiteSpace($SmtpServer)) {
+        throw 'SmtpServer is required when -SendEmail is used.'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($MailFrom)) {
+        throw 'MailFrom is required when -SendEmail is used.'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($MailTo)) {
+        throw 'At least one MailTo recipient is required when -SendEmail is used.'
+    }
+
+    $mailRecipients = @(
+        $MailTo -split '[;,]' |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+
+    if ($mailRecipients.Count -eq 0) {
+        throw 'MailTo did not contain a valid recipient.'
+    }
+
+    if ($CredentialPath -and -not (Test-Path -LiteralPath $CredentialPath)) {
+        throw "CredentialPath not found: $CredentialPath"
+    }
+}
 
 $updateScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
 $computerScope = New-Object Microsoft.UpdateServices.Administration.ComputerTargetScope
@@ -206,6 +246,134 @@ Write-Host $summaryTxt
 Write-Host $actionableCsv
 Write-Host $supersededCsv
 Write-Host $declinedCsv
+
+
+if ($SendEmail) {
+    Write-Host ''
+    Write-Host '=== Sending email ===' -ForegroundColor Cyan
+
+    $subject = "$MailSubjectPrefix WSUS Needed Report - $($wsus.Name) - $(Get-Date -Format 'yyyy-MM-dd')"
+
+    function Convert-SectionToHtml {
+        param(
+            [object[]]$Rows,
+            [string]$Title,
+            [string]$HeaderColor,
+            [int]$Top = 10
+        )
+
+        $selected = @(
+            $Rows | Select-Object -First $Top NeededCount,IsApproved,Classification,KB,Title
+        )
+
+        if ($selected.Count -eq 0) {
+            $table = '<p style="margin:8px 0 16px 0;">No entries.</p>'
+        }
+        else {
+            $table = ($selected | ConvertTo-Html -Fragment -Property NeededCount,IsApproved,Classification,KB,Title) -join [Environment]::NewLine
+            $table = $table -replace '<table>', '<table style="border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif;font-size:12px;">'
+            $table = $table -replace '<th>', '<th style="border:1px solid #d0d0d0;padding:6px;text-align:left;background:#f3f3f3;">'
+            $table = $table -replace '<td>', '<td style="border:1px solid #d0d0d0;padding:6px;vertical-align:top;">'
+        }
+
+        return @"
+<div style="margin:18px 0;border:1px solid #d0d0d0;border-radius:6px;overflow:hidden;">
+  <div style="background:$HeaderColor;color:#ffffff;padding:10px 12px;font-weight:600;font-size:15px;">
+    $Title ($($Rows.Count))
+  </div>
+  <div style="padding:10px 12px;background:#ffffff;">
+    $table
+  </div>
+</div>
+"@
+    }
+
+    $actionableHtml = Convert-SectionToHtml -Rows $actionable -Title 'NEEDED-ACTIONABLE' -HeaderColor '#2e7d32'
+    $supersededHtml = Convert-SectionToHtml -Rows $superseded -Title 'NEEDED-SUPERSEDED' -HeaderColor '#ef6c00'
+    $declinedHtml = Convert-SectionToHtml -Rows $declined -Title 'DECLINED-CLEANUP' -HeaderColor '#616161'
+
+    $body = @"
+<html>
+<body style="font-family:Segoe UI,Arial,sans-serif;background:#f7f7f7;color:#202020;padding:18px;">
+<div style="max-width:1100px;margin:0 auto;background:#ffffff;border:1px solid #dddddd;border-radius:8px;padding:20px;">
+  <h2 style="margin-top:0;">WSUS Needed Operational Report</h2>
+
+  <p>
+    <b>Server:</b> $($wsus.Name)<br/>
+    <b>Generated:</b> $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+  </p>
+
+  <table style="border-collapse:collapse;margin:14px 0 20px 0;">
+    <tr>
+      <td style="padding:8px 14px;background:#e8f5e9;border:1px solid #c8e6c9;"><b>NEEDED-ACTIONABLE</b></td>
+      <td style="padding:8px 14px;background:#e8f5e9;border:1px solid #c8e6c9;">$($actionable.Count)</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 14px;background:#fff3e0;border:1px solid #ffe0b2;"><b>NEEDED-SUPERSEDED</b></td>
+      <td style="padding:8px 14px;background:#fff3e0;border:1px solid #ffe0b2;">$($superseded.Count)</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 14px;background:#eeeeee;border:1px solid #dddddd;"><b>DECLINED-CLEANUP</b></td>
+      <td style="padding:8px 14px;background:#eeeeee;border:1px solid #dddddd;">$($declined.Count)</td>
+    </tr>
+  </table>
+
+  $actionableHtml
+  $supersededHtml
+  $declinedHtml
+
+  <p style="font-size:11px;color:#666666;margin-top:20px;">
+    Full CSV reports are attached. This report is read-only and does not approve, decline, delete, or otherwise modify WSUS updates.
+  </p>
+</div>
+</body>
+</html>
+"@
+
+    $mail = New-Object System.Net.Mail.MailMessage
+    $smtp = $null
+
+    try {
+        $mail.From = New-Object System.Net.Mail.MailAddress($MailFrom)
+
+        foreach ($recipient in $mailRecipients) {
+            if (-not [string]::IsNullOrWhiteSpace($recipient)) {
+                [void]$mail.To.Add($recipient.Trim())
+            }
+        }
+
+        $mail.Subject = $subject
+        $mail.Body = $body
+        $mail.IsBodyHtml = $true
+
+        foreach ($attachmentPath in @($summaryTxt,$actionableCsv,$supersededCsv,$declinedCsv)) {
+            [void]$mail.Attachments.Add((New-Object System.Net.Mail.Attachment($attachmentPath)))
+        }
+
+        $smtp = New-Object System.Net.Mail.SmtpClient($SmtpServer,$SmtpPort)
+        $smtp.EnableSsl = [bool]$UseSsl
+
+        if ($CredentialPath) {
+            $credential = Import-Clixml -LiteralPath $CredentialPath
+            if (-not ($credential -is [System.Management.Automation.PSCredential])) {
+                throw "CredentialPath does not contain a PSCredential: $CredentialPath"
+            }
+
+            $smtp.UseDefaultCredentials = $false
+            $smtp.Credentials = $credential.GetNetworkCredential()
+        }
+        else {
+            $smtp.UseDefaultCredentials = $false
+        }
+
+        $smtp.Send($mail)
+        Write-Host "Email sent to: $($mailRecipients -join ', ')" -ForegroundColor Green
+    }
+    finally {
+        if ($mail) { $mail.Dispose() }
+        if ($smtp) { $smtp.Dispose() }
+    }
+}
 
 Write-Host ''
 Write-Host 'Read-only report completed.' -ForegroundColor Green

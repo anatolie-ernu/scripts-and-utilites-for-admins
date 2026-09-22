@@ -880,6 +880,78 @@ Pentru mai multe rânduri afișate în consolă:
 Scriptul nu aprobă, nu refuză, nu șterge și nu modifică update-uri. Update-urile superseded sunt doar separate în raport. Decline/cleanup trebuie executat printr-o procedură separată, controlată și cu perioadă de excludere, după validarea faptului că update-urile superseding sunt deja disponibile/deployed.
 
 
+### 20.7. Trimiterea raportului WSUS pe email și rularea din Scheduled Task
+
+Scriptul `19-WSUS-Needed-Operational-Report.ps1` poate trimite raportul prin SMTP.
+
+Emailul este HTML și separă vizual categoriile:
+
+    verde:
+      NEEDED-ACTIONABLE
+
+    portocaliu:
+      NEEDED-SUPERSEDED
+
+    gri:
+      DECLINED-CLEANUP
+
+În corpul mesajului sunt afișate sumarul și primele elemente din fiecare categorie. Lista completă este atașată ca fișiere:
+
+    00-Summary.txt
+    01-Needed-Actionable.csv
+    02-Needed-Superseded.csv
+    03-Declined-Cleanup.csv
+
+Exemplu de trimitere manuală printr-un SMTP relay intern:
+
+    .\scripts\19-WSUS-Needed-Operational-Report.ps1 \
+      -SendEmail \
+      -SmtpServer "smtp.ernu.sec" \
+      -SmtpPort 25 \
+      -MailFrom "wsus-report@ernu.sec" \
+      -MailTo "it@ernu.sec"
+
+Pentru automatizare zilnică se utilizează:
+
+    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1
+
+Preview:
+
+    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 \
+      -SmtpServer "smtp.ernu.sec" \
+      -SmtpPort 25 \
+      -MailFrom "wsus-report@ernu.sec" \
+      -MailTo "it@ernu.sec" \
+      -DailyAt "08:00"
+
+Aplicare:
+
+    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 \
+      -SmtpServer "smtp.ernu.sec" \
+      -SmtpPort 25 \
+      -MailFrom "wsus-report@ernu.sec" \
+      -MailTo "it@ernu.sec" \
+      -DailyAt "08:00" \
+      -Apply
+
+Task-ul rezultat:
+
+    WSUS - Needed Operational Report
+
+Rulează:
+
+    zilnic la ora configurată;
+    ca SYSTEM;
+    cu RunLevel Highest;
+    StartWhenAvailable;
+    MultipleInstances = IgnoreNew;
+    ExecutionTimeLimit = 2 ore.
+
+Modelul implicit pentru Scheduled Task presupune un SMTP relay intern care acceptă relay de la serverul WSUS fără autentificare interactivă. Nu introduceți parole SMTP în script sau în repository-ul public.
+
+Dacă infrastructura SMTP cere autentificare, utilizați un cont de serviciu și o metodă de secret management compatibilă cu identitatea sub care rulează task-ul, nu credentiale hardcodate.
+
+
 ## 21. Microsoft Office - modelul corect
 
 Office Professional Plus 2019, Office LTSC 2021 și Office LTSC 2024 folosesc Click-to-Run. WSUS singur nu distribuie build-urile Office.
