@@ -589,6 +589,105 @@ Verificare PowerShell:
 
 Pentru Server și SQL, baseline-ul server-side trebuie revizuit separat de cel pentru Windows 11 workstation. Nu importați setări specifice workstation într-un GPO server fără validare.
 
+### 20.2. Server Baseline v2: notify/manual pentru update-uri obișnuite
+
+Cerința operațională recomandată pentru servere este:
+
+    Update-uri Windows Server / .NET / SQL / Feature
+        -> WSUS
+        -> notificare
+        -> instalare manuală
+
+    Defender Security Intelligence / Platform
+        -> WSUS
+        -> auto-approval Broad
+        -> instalare automată prin worker Defender dedicat
+
+Nu modificați `AUOptions` pentru a automatiza Defender, deoarece această setare afectează toate update-urile aprobate. Baseline v2 păstrează:
+
+    AUOptions = 2
+    NoAutoUpdate = 0
+    UseWUServer = 1
+    UseUpdateClassPolicySource = 1
+
+și setează explicit sursa WSUS pentru:
+
+    Feature Updates = WSUS
+    Quality Updates = WSUS
+    Driver Updates  = WSUS
+    Other Updates   = WSUS
+
+Script de creare/curățare:
+
+    .\scripts\13-New-WSUS-Server-BaselineV2.ps1 \
+      -SourceGpoName "WSUS Server Baseline" \
+      -WsusUrl "http://wsus01.ernu.sec:8530"
+
+Preview-ul nu modifică GPO-ul. Aplicare:
+
+    .\scripts\13-New-WSUS-Server-BaselineV2.ps1 \
+      -SourceGpoName "WSUS Server Baseline" \
+      -WsusUrl "http://wsus01.ernu.sec:8530" \
+      -Apply
+
+Scriptul:
+
+- face backup cu timestamp pentru GPO-ul sursă și pentru baseline v2 dacă există;
+- creează baseline v2 prin `Copy-GPO` dacă nu există;
+- dacă există deja, îl reîmprospătează prin `Import-GPO`;
+- setează `WUServer` și `WUStatusServer`;
+- setează `AUOptions=2`;
+- setează scan source WSUS pentru toate clasele de update;
+- elimină `TargetGroup` și `TargetGroupEnabled` din baseline;
+- elimină setările legacy de scheduled install/reboot care nu sunt necesare în modul notify/manual;
+- elimină `ElevateNonAdmins`;
+- configurează Defender Security Intelligence cu `FallbackOrder=InternalDefinitionUpdateServer`;
+- configurează verificarea security intelligence la fiecare oră;
+- nu creează link-uri OU.
+
+Opțional, pentru medii strict izolate puteți utiliza `-BlockWindowsUpdateInternetLocations`, dar această opțiune trebuie evaluată deoarece poate afecta scenarii Features on Demand / language packs.
+
+### 20.3. Instalare automată Defender fără automatizarea celorlalte update-uri
+
+Auto-approval-ul pe WSUS nu înseamnă automat și auto-install pe client dacă serverele folosesc `AUOptions=2`.
+
+Pentru a automatiza numai Defender, utilizați:
+
+    .\scripts\14-Install-Defender-Client-AutoUpdateTask.ps1
+
+Preview:
+
+    .\scripts\14-Install-Defender-Client-AutoUpdateTask.ps1
+
+Aplicare pe un server pilot:
+
+    .\scripts\14-Install-Defender-Client-AutoUpdateTask.ps1 -Apply
+
+Scriptul creează:
+
+    C:\Scripts\WSUS\Install-Approved-DefenderUpdates.ps1
+
+și task-ul:
+
+    WSUS - Install Approved Defender Updates
+
+Task-ul rulează orar ca SYSTEM și caută exclusiv update-uri aplicabile, aprobate/oferite de WSUS, cu titlul Defender și canalul `Current Channel (Broad)` pentru:
+
+    KB2267602
+    KB4052623
+
+Nu instalează update-uri cumulative Windows, .NET, SQL, drivere sau feature upgrades. Worker-ul nu forțează restartul; dacă WUA raportează `RebootRequired=True`, situația este doar înregistrată în log.
+
+Log:
+
+    C:\ProgramData\WSUS-Defender-AutoUpdate\DefenderAutoUpdate.log
+
+Validare manuală pe server pilot:
+
+    PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy RemoteSigned -File \
+      "C:\Scripts\WSUS\Install-Approved-DefenderUpdates.ps1" -WhatIf
+
+
 
 ## 21. Microsoft Office - modelul corect
 

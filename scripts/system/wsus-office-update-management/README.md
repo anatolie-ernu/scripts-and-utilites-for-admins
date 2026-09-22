@@ -66,6 +66,8 @@ Example public hostnames use the ernu.sec documentation namespace.
       10-Approve-DefenderUpdates.ps1
       11-Configure-WSUS-Targeting-GPOs.ps1
       12-Import-WSUS-Server-GPO-Baseline.ps1
+      13-New-WSUS-Server-BaselineV2.ps1
+      14-Install-Defender-Client-AutoUpdateTask.ps1
     office-configs/
       office2019.xml
       office2021.xml
@@ -189,6 +191,50 @@ Default target mapping:
 - Computer Policy Deploy - WSUS Updates SQL-Production -> SQL-Production
 
 The helper refuses to apply if a target GPO is missing, creates timestamped rollback backups, imports settings into the existing target GPO objects, and restores the target-specific WSUS group values after import.
+
+## Server Baseline v2: ordinary updates manual, Defender automatic
+
+For Windows Server, use a separate server baseline rather than the workstation update policy.
+
+Desired behavior:
+
+- ordinary Windows Server, .NET, SQL, SSMS/ODBC/OLE DB and feature updates: notify/manual installation;
+- `AUOptions=2` and `NoAutoUpdate=0`;
+- all Feature/Quality/Driver/Other scan sources explicitly point to WSUS;
+- no client-side `TargetGroup` value in the common baseline;
+- Defender security intelligence checks hourly from `InternalDefinitionUpdateServer`;
+- Defender platform/security-intelligence WSUS approvals remain restricted to Broad channel;
+- automatic client installation of approved KB2267602/KB4052623 is handled by a dedicated SYSTEM scheduled task, not by changing the global Windows Update mode.
+
+Create/refresh the v2 baseline from an existing validated server GPO:
+
+    .\scripts\13-New-WSUS-Server-BaselineV2.ps1 \
+      -SourceGpoName "WSUS Server Baseline" \
+      -WsusUrl "http://wsus01.ernu.sec:8530"
+
+Apply after preview:
+
+    .\scripts\13-New-WSUS-Server-BaselineV2.ps1 \
+      -SourceGpoName "WSUS Server Baseline" \
+      -WsusUrl "http://wsus01.ernu.sec:8530" \
+      -Apply
+
+The script creates a timestamped backup, clones/imports the source policy into `Computer Policy Deploy - WSUS Server Baseline v2`, normalizes WSUS settings, removes legacy scheduled-install/noise values, removes baseline targeting, and configures Defender Security Intelligence to use WSUS hourly.
+
+On a pilot server, install the client Defender-only task:
+
+    .\scripts\14-Install-Defender-Client-AutoUpdateTask.ps1
+
+Apply:
+
+    .\scripts\14-Install-Defender-Client-AutoUpdateTask.ps1 -Apply
+
+The client worker installs only applicable, WSUS-approved, Broad-channel:
+
+- KB2267602 - Defender Security Intelligence
+- KB4052623 - Defender Platform
+
+It never installs general cumulative, .NET, SQL, driver, or feature updates and never forces a reboot.
 
 ## Public-data policy
 
