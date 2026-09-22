@@ -364,7 +364,15 @@ După prima sincronizare listați toate produsele și verificați denumirile exa
 - Microsoft Server operating system-21H2 sau categoria reală din catalog pentru Windows Server 2022;
 - SQL Server 2017;
 - SQL Server 2019;
-- SQL Server 2022.
+- SQL Server 2022;
+- Microsoft SQL Server Management Studio v17;
+- Microsoft SQL Server Management Studio v18;
+- Microsoft SQL Server Management Studio v19;
+- Microsoft SQL Server Management Studio v20;
+- Microsoft ODBC Driver 17 for SQL Server;
+- Microsoft ODBC Driver 18 for SQL Server;
+- Microsoft OLE DB Driver 18 for SQL Server;
+- Microsoft OLE DB Driver 19 for SQL Server.
 
 Pentru Windows 11 nu confundați produsul principal cu categoriile Dynamic Update sau Drivers.
 
@@ -412,7 +420,26 @@ SQL Server servicing este disponibil prin Microsoft Update / WSUS. Înainte de a
 
 Nu tratați SQL Server ca un workstation update generic.
 
-## 18. Grupuri și rollout
+## 18. SQL tools și drivere de conectivitate
+
+Dacă aceste componente există în infrastructură, politica strictă WSUS le include explicit după denumirea exactă din catalog:
+
+    Microsoft SQL Server Management Studio v17
+    Microsoft SQL Server Management Studio v18
+    Microsoft SQL Server Management Studio v19
+    Microsoft SQL Server Management Studio v20
+    Microsoft ODBC Driver 17 for SQL Server
+    Microsoft ODBC Driver 18 for SQL Server
+    Microsoft OLE DB Driver 18 for SQL Server
+    Microsoft OLE DB Driver 19 for SQL Server
+
+Nu se folosește wildcard generic SQL. Astfel rămân dezactivate automat produse precum SQL Server 2012/2014/2016/2025, SQL Server Feature Pack, drivere neutilizate și categoriile Setup Product Updates.
+
+ODBC Driver 17 și 18 pot exista în paralel și au cicluri de suport separate. Microsoft recomandă menținerea pe cel mai recent build disponibil din ramura majoră folosită. OLE DB Driver 19 este generația curentă pentru dezvoltări noi, iar OLE DB Driver 18 poate rămâne instalat pentru compatibilitate cu aplicații existente.
+
+SSMS are propriul ciclu Modern Lifecycle. Dacă există mai multe versiuni majore în infrastructură, WSUS poate păstra produsele lor în catalog, dar trebuie planificată standardizarea treptată pe o versiune SSMS curentă.
+
+## 19. Grupuri și rollout
 
 Structură recomandată:
 
@@ -435,7 +462,7 @@ Flux:
       -> validare
       -> Production
 
-## 19. GPO pentru Windows
+## 20. GPO pentru Windows
 
 Exemplu:
 
@@ -450,7 +477,7 @@ Configurați cel puțin:
 
 Evitați politici conflictuale WSUS/WUfB. Dacă TargetReleaseVersion este setat la o versiune veche, feature upgrade-ul poate fi blocat intenționat.
 
-## 20. Microsoft Office - modelul corect
+## 21. Microsoft Office - modelul corect
 
 Office Professional Plus 2019, Office LTSC 2021 și Office LTSC 2024 folosesc Click-to-Run. WSUS singur nu distribuie build-urile Office.
 
@@ -462,13 +489,13 @@ Flux:
       -> SMB share
       -> Office clients
 
-## 21. Starea suportului Office
+## 22. Starea suportului Office
 
 - Office 2019 este legacy și a ieșit din suport normal. Repository-ul 2019 este păstrat pentru inventar existent și migrare.
 - Office LTSC 2021 ajunge la finalul suportului în octombrie 2026; trebuie planificată migrarea.
 - Office LTSC 2024 este ținta LTSC on-premises preferată în acest design.
 
-## 22. Structura Office repository
+## 23. Structura Office repository
 
     D:\OfficeUpdates\ODT
     D:\OfficeUpdates\Config
@@ -492,7 +519,7 @@ Actualizare repository:
 
 ODT folosește setup.exe /download configuration.xml.
 
-## 23. Share și GPO Office
+## 24. Share și GPO Office
 
 Exemplu share:
 
@@ -519,7 +546,7 @@ Exemple Update Path:
 
 Pe Office 2019 legacy păstrați sursa 2019 numai până la migrare.
 
-## 24. Verificare Office client
+## 25. Verificare Office client
 
 Dintr-o aplicație Office:
 
@@ -527,7 +554,7 @@ Dintr-o aplicație Office:
 
 Verificați și task-ul Office Automatic Updates 2.0.
 
-## 25. Automatizarea politicii WSUS de producție
+## 26. Automatizarea politicii WSUS de producție
 
 După ce sincronizarea inițială se termină cu:
 
@@ -594,7 +621,7 @@ Acestea rămân în flux Pilot -> validare -> Production.
 
 Microsoft Defender publică security intelligence sub KB2267602 și platform updates sub KB4052623. Platform updates pot apărea în mai multe pachete în WSUS din cauza rollout-ului gradual.
 
-## 26. Validare finală
+## 27. Validare finală
 
     .\scripts\07-Validate-WSUS.ps1
 
@@ -626,7 +653,7 @@ Office:
     Office2021 repository - migration planning
     Office2024 repository - LTSC target
 
-## 27. Mentenanță
+## 28. Mentenanță
 
 Planificați:
 
@@ -641,7 +668,7 @@ Planificați:
 
 Nu ștergeți manual fișiere din WsusContent.
 
-## 28. Surse oficiale
+## 29. Surse oficiale
 
 - Microsoft Learn - Deploy Windows Server Update Services: https://learn.microsoft.com/windows-server/administration/windows-server-update-services/deploy/deploy-windows-server-update-services
 - Microsoft Learn - Install the WSUS server role: https://learn.microsoft.com/windows-server/administration/windows-server-update-services/deploy/1-install-the-wsus-server-role
@@ -659,3 +686,8 @@ Nu ștergeți manual fișiere din WsusContent.
 - Microsoft Learn - Troubleshoot WSUS import/sync issues: https://learn.microsoft.com/troubleshoot/mem/configmgr/update-management/troubleshoot-wsus-import-sync-issues
 
 - Microsoft Learn - Microsoft Defender Antivirus security intelligence and product updates: https://learn.microsoft.com/defender-endpoint/microsoft-defender-antivirus-updates
+
+- Microsoft Learn - ODBC Driver for SQL Server release notes: https://learn.microsoft.com/sql/connect/odbc/windows/release-notes-odbc-sql-server-windows
+- Microsoft Learn - ODBC Driver support lifecycle: https://learn.microsoft.com/sql/connect/odbc/support-lifecycle
+- Microsoft Learn - OLE DB Driver for SQL Server: https://learn.microsoft.com/sql/connect/oledb/oledb-driver-for-sql-server
+- Microsoft Learn - SSMS support policy: https://learn.microsoft.com/ssms/support-policy
