@@ -71,6 +71,7 @@ Example public hostnames use the ernu.sec documentation namespace.
       15-Configure-WSUS-Pilot-AutoApproval.ps1
       16-Configure-WSUS-Accelerated-AutoApproval.ps1
       17-Switch-WSUS-AutoApproval-Mode.ps1
+      18-Configure-Defender-Definition-AutoApproval.ps1
     office-configs/
       office2019.xml
       office2021.xml
@@ -300,6 +301,31 @@ Apply:
     .\scripts\17-Switch-WSUS-AutoApproval-Mode.ps1 -Mode Accelerated -Apply
 
 Add `-ApplyExisting` only after reviewing already-synchronized updates. Switching modes changes future automatic approvals; it does not revoke approvals already granted under the previous mode.
+
+## Defender Definition Updates auto-approval
+
+Use `18-Configure-Defender-Definition-AutoApproval.ps1` to create a dedicated WSUS rule for the `Microsoft Defender Antivirus` product and `Definition Updates` classification across all managed workstation/server rings:
+
+- Windows-11-Pro-Pilot
+- Windows-11-Pro-Production
+- Server-Pilot
+- Server-Production
+- SQL-Pilot
+- SQL-Production
+
+Preview:
+
+    .\scripts\18-Configure-Defender-Definition-AutoApproval.ps1
+
+Create/update and enable the rule:
+
+    .\scripts\18-Configure-Defender-Definition-AutoApproval.ps1 -Apply
+
+Apply the rule to already-synchronized matching Defender definition updates as well:
+
+    .\scripts\18-Configure-Defender-Definition-AutoApproval.ps1 -Apply -ApplyExisting
+
+The rule is intentionally constrained by both product and classification. It does not approve generic Windows quality updates, upgrades, drivers, SQL CU/GDR, SSMS, ODBC or OLE DB updates.
 
 ## Public-data policy
 

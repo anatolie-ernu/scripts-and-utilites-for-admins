@@ -794,6 +794,44 @@ Important: trecerea din Accelerated în Conservative modifică auto-approval-uri
 
 
 
+### 20.5. Auto-approval Defender Definition Updates pe stații și servere
+
+Pentru actualizările de definiții Microsoft Defender se poate utiliza o regulă WSUS separată, limitată strict la:
+
+    Product:
+      Microsoft Defender Antivirus
+
+    Classification:
+      Definition Updates
+
+    Groups:
+      Windows-11-Pro-Pilot
+      Windows-11-Pro-Production
+      Server-Pilot
+      Server-Production
+      SQL-Pilot
+      SQL-Production
+
+Script:
+
+    .\scripts\18-Configure-Defender-Definition-AutoApproval.ps1
+
+Preview:
+
+    .\scripts\18-Configure-Defender-Definition-AutoApproval.ps1
+
+Aplicare:
+
+    .\scripts\18-Configure-Defender-Definition-AutoApproval.ps1 -Apply
+
+Aplicare inclusiv pentru update-urile Defender deja sincronizate:
+
+    .\scripts\18-Configure-Defender-Definition-AutoApproval.ps1 -Apply -ApplyExisting
+
+Regula verifică simultan produsul `Microsoft Defender Antivirus` și clasificarea `Definition Updates`. Nu aprobă generic toate update-urile Windows și nu afectează `Critical Updates`, `Security Updates`, `Updates`, `Update Rollups`, `Upgrades`, Drivers, SQL CU/GDR, SSMS, ODBC sau OLE DB.
+
+
+
 ## 21. Microsoft Office - modelul corect
 
 Office Professional Plus 2019, Office LTSC 2021 și Office LTSC 2024 folosesc Click-to-Run. WSUS singur nu distribuie build-urile Office.
