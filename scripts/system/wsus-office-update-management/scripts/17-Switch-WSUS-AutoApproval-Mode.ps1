@@ -56,6 +56,17 @@ else {
 
 Write-Warning 'Switching modes changes future automatic approvals only. Existing update approvals are NOT revoked automatically.'
 
+if ($Mode -eq 'Conservative') {
+    $targetScript = Join-Path $scriptRoot '15-Configure-WSUS-Pilot-AutoApproval.ps1'
+}
+else {
+    $targetScript = Join-Path $scriptRoot '16-Configure-WSUS-Accelerated-AutoApproval.ps1'
+}
+
+if (-not (Test-Path $targetScript)) {
+    throw "Required mode script not found: $targetScript. No existing auto-approval rules were changed."
+}
+
 if (-not $Apply) {
     Write-Host ''
     Write-Host 'PREVIEW ONLY. No rules were enabled or disabled.' -ForegroundColor Yellow
@@ -72,17 +83,6 @@ foreach ($ruleName in $managedRules) {
         $rule.Save()
         Write-Host "Disabled: $ruleName" -ForegroundColor DarkGray
     }
-}
-
-if ($Mode -eq 'Conservative') {
-    $targetScript = Join-Path $scriptRoot '15-Configure-WSUS-Pilot-AutoApproval.ps1'
-}
-else {
-    $targetScript = Join-Path $scriptRoot '16-Configure-WSUS-Accelerated-AutoApproval.ps1'
-}
-
-if (-not (Test-Path $targetScript)) {
-    throw "Required mode script not found: $targetScript"
 }
 
 $args = @{
