@@ -96,6 +96,9 @@ Products:
 - SQL Server 2017
 - SQL Server 2019
 - SQL Server 2022
+- SQL Server Management Studio v17, v18, v19, v20
+- Microsoft ODBC Driver 17 and 18 for SQL Server
+- Microsoft OLE DB Driver 18 and 19 for SQL Server
 - Microsoft Defender Antivirus
 
 Classifications:
@@ -182,3 +185,19 @@ Official references:
 
 - Microsoft Defender Antivirus updates: https://learn.microsoft.com/defender-endpoint/microsoft-defender-antivirus-updates
 - Approve-WsusUpdate: https://learn.microsoft.com/powershell/module/updateservices/approve-wsusupdate
+
+
+### SQL tools and driver products
+
+The production policy also enables the following exact Microsoft Update catalog products when they are present:
+
+- Microsoft SQL Server Management Studio v17
+- Microsoft SQL Server Management Studio v18
+- Microsoft SQL Server Management Studio v19
+- Microsoft SQL Server Management Studio v20
+- Microsoft ODBC Driver 17 for SQL Server
+- Microsoft ODBC Driver 18 for SQL Server
+- Microsoft OLE DB Driver 18 for SQL Server
+- Microsoft OLE DB Driver 19 for SQL Server
+
+SQL tools and drivers are matched by exact catalog title. The script does not enable generic SQL Server, SQL Feature Pack, older SQL Server releases, SQL Server 2025, or unrelated setup-product categories.
