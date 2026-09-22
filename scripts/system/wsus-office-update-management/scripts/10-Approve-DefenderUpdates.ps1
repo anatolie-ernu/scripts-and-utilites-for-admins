@@ -32,8 +32,8 @@ if ($groups.Count -eq 0) {
 }
 
 $allowed = @(
-    @{ KB = '2267602'; Label = 'Defender Security Intelligence' },
-    @{ KB = '4052623'; Label = 'Defender Platform Update' }
+    @{ KB = '2267602'; Label = 'Defender Security Intelligence'; RequiredTitlePattern = 'Current Channel \(Broad\)' },
+    @{ KB = '4052623'; Label = 'Defender Platform Update'; RequiredTitlePattern = 'Current Channel \(Broad\)' }
 )
 
 $approvedCount = 0
@@ -47,7 +47,7 @@ foreach ($item in $allowed) {
     $scope.FromArrivalDate = $cutoffUtc
     $scope.TextIncludes = $kb
 
-    $updates = @($wsus.GetUpdates($scope) | Where-Object {
+    $allCandidates = @($wsus.GetUpdates($scope) | Where-Object {
         $normalizedKb = @($_.KnowledgebaseArticles | ForEach-Object { ($_ -replace '^KB','').Trim() })
         ($normalizedKb -contains $kb) -and
         ($_.Title -match 'Defender') -and
@@ -55,7 +55,21 @@ foreach ($item in $allowed) {
         (-not $_.IsSuperseded)
     })
 
-    Write-Host "`n$($item.Label) / KB$kb : $($updates.Count) active candidate(s)" -ForegroundColor Cyan
+    $updates = @($allCandidates | Where-Object {
+        $_.Title -match $item.RequiredTitlePattern
+    })
+
+    $excluded = @($allCandidates | Where-Object {
+        $_.Title -notmatch $item.RequiredTitlePattern
+    })
+
+    Write-Host "`n$($item.Label) / KB$kb : $($updates.Count) eligible Broad candidate(s)" -ForegroundColor Cyan
+    if ($excluded.Count -gt 0) {
+        Write-Host "  Excluded non-Broad candidates:" -ForegroundColor DarkGray
+        $excluded | ForEach-Object {
+            Write-Host "    $($_.Title)" -ForegroundColor DarkGray
+        }
+    }
 
     foreach ($update in $updates) {
         Write-Host "  $($update.Title)"
