@@ -902,37 +902,23 @@ Emailul este HTML și separă vizual categoriile:
     02-Needed-Superseded.csv
     03-Declined-Cleanup.csv
 
-Exemplu de trimitere manuală printr-un SMTP relay intern:
+Exemplu de trimitere manuală printr-un SMTP relay intern, recomandat pe o singură linie PowerShell:
 
-    .\scripts\19-WSUS-Needed-Operational-Report.ps1 \
-      -SendEmail \
-      -SmtpServer "smtp.ernu.sec" \
-      -SmtpPort 25 \
-      -MailFrom "wsus-report@ernu.sec" \
-      -MailTo "it@ernu.sec"
+    .\scripts\19-WSUS-Needed-Operational-Report.ps1 -SendEmail -SmtpServer "smtp.ernu.sec" -SmtpPort 25 -MailFrom "wsus-report@ernu.sec" -MailTo "it@ernu.sec"
 
 Pentru automatizare zilnică se utilizează:
 
     .\scripts\20-Install-WSUS-Needed-Report-Task.ps1
 
-Preview:
+Preview, pe o singură linie PowerShell:
 
-    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 \
-      -SmtpServer "smtp.ernu.sec" \
-      -SmtpPort 25 \
-      -MailFrom "wsus-report@ernu.sec" \
-      -MailTo "it@ernu.sec" \
-      -DailyAt "08:00"
+    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 -SmtpServer "smtp.ernu.sec" -SmtpPort 25 -MailFrom "wsus-report@ernu.sec" -MailTo "it@ernu.sec" -DailyAt "08:00"
 
-Aplicare:
+Aplicare, pe o singură linie PowerShell:
 
-    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 \
-      -SmtpServer "smtp.ernu.sec" \
-      -SmtpPort 25 \
-      -MailFrom "wsus-report@ernu.sec" \
-      -MailTo "it@ernu.sec" \
-      -DailyAt "08:00" \
-      -Apply
+    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 -SmtpServer "smtp.ernu.sec" -SmtpPort 25 -MailFrom "wsus-report@ernu.sec" -MailTo "it@ernu.sec" -DailyAt "08:00" -Apply
+
+Notă PowerShell: exemplele de mai sus sunt intenționat scrise pe o singură linie. Caracterul `\` folosit uneori în documentație Markdown/Linux nu este separator de linie în PowerShell. Pentru comenzi multiline interactive, PowerShell folosește backtick-ul (`), care trebuie să fie ultimul caracter de pe linie și să nu aibă spații după el.
 
 Task-ul rezultat:
 
