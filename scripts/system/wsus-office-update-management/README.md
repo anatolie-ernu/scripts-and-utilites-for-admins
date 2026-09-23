@@ -378,35 +378,21 @@ The email also attaches the complete report files:
 - `02-Needed-Superseded.csv`;
 - `03-Declined-Cleanup.csv`.
 
-Example manual send through an internal SMTP relay:
+Example manual send through an internal SMTP relay (recommended as a single PowerShell line):
 
-    .\scripts\19-WSUS-Needed-Operational-Report.ps1 \
-      -SendEmail \
-      -SmtpServer "smtp.ernu.sec" \
-      -SmtpPort 25 \
-      -MailFrom "wsus-report@ernu.sec" \
-      -MailTo "it@ernu.sec"
+    .\scripts\19-WSUS-Needed-Operational-Report.ps1 -SendEmail -SmtpServer "smtp.ernu.sec" -SmtpPort 25 -MailFrom "wsus-report@ernu.sec" -MailTo "it@ernu.sec"
 
 Use `20-Install-WSUS-Needed-Report-Task.ps1` to install a daily SYSTEM Scheduled Task.
 
-Preview:
+Preview (single PowerShell line):
 
-    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 \
-      -SmtpServer "smtp.ernu.sec" \
-      -SmtpPort 25 \
-      -MailFrom "wsus-report@ernu.sec" \
-      -MailTo "it@ernu.sec" \
-      -DailyAt "08:00"
+    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 -SmtpServer "smtp.ernu.sec" -SmtpPort 25 -MailFrom "wsus-report@ernu.sec" -MailTo "it@ernu.sec" -DailyAt "08:00"
 
-Apply:
+Apply (single PowerShell line):
 
-    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 \
-      -SmtpServer "smtp.ernu.sec" \
-      -SmtpPort 25 \
-      -MailFrom "wsus-report@ernu.sec" \
-      -MailTo "it@ernu.sec" \
-      -DailyAt "08:00" \
-      -Apply
+    .\scripts\20-Install-WSUS-Needed-Report-Task.ps1 -SmtpServer "smtp.ernu.sec" -SmtpPort 25 -MailFrom "wsus-report@ernu.sec" -MailTo "it@ernu.sec" -DailyAt "08:00" -Apply
+
+PowerShell note: these examples intentionally use a single line. Do not copy the Markdown backslash (\) convention as a PowerShell line continuation. If a multi-line command is required interactively, PowerShell uses the backtick character (`) as the continuation character, and it must be the final character on the line with no trailing spaces.
 
 The default task runs as `SYSTEM` and assumes the SMTP relay accepts mail from the WSUS server without interactive authentication. Do not embed SMTP passwords in the public repository.
 
