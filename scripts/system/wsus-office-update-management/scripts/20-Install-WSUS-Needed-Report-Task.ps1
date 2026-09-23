@@ -114,9 +114,26 @@ Write-Host ''
 Write-Host 'Email body: HTML with color-coded Actionable, Superseded and Declined/Cleanup sections.' -ForegroundColor Yellow
 
 if (-not $Apply) {
+    $applyCommand = @(
+        (Quote-Argument $MyInvocation.MyCommand.Path),
+        '-SmtpServer', (Quote-Argument $SmtpServer),
+        '-SmtpPort', $SmtpPort,
+        '-MailFrom', (Quote-Argument $MailFrom),
+        '-MailTo', (Quote-Argument $MailTo),
+        '-DailyAt', (Quote-Argument $DailyAt)
+    )
+
+    if ($UseSsl) {
+        $applyCommand += '-UseSsl'
+    }
+
+    $applyCommand += '-Apply'
+
     Write-Host ''
     Write-Host 'PREVIEW ONLY. Scheduled Task was not created or changed.' -ForegroundColor Yellow
-    Write-Host 'Run again with -Apply after reviewing the SMTP and schedule settings.' -ForegroundColor Yellow
+    Write-Host 'Run the following command as a single PowerShell line after review:' -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host ('& ' + ($applyCommand -join ' ')) -ForegroundColor Cyan
     return
 }
 
