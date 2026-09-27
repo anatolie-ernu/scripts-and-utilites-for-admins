@@ -1,0 +1,6 @@
+# One image per line. Blank lines and # comments are ignored.
+# Replace these examples with exact project-approved image tags.
+nginx:1.30.5-alpine
+wordpress:7.1.0-php8.3-fpm
+mariadb:11.8.9
+redis:8.8.2-alpine
