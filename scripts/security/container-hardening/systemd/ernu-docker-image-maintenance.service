@@ -1,0 +1,12 @@
+[Unit]
+Description=ERNU.EU Docker image pull and Trivy security gate
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=@ROOT_DIR@
+ExecStart=@ROOT_DIR@/scripts/docker-image-maintenance.sh --pull --prune-dangling
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
