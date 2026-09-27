@@ -1,0 +1,12 @@
+[Unit]
+Description=ERNU.EU weekly Docker Bench Security audit
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=@ROOT_DIR@
+ExecStart=@ROOT_DIR@/scripts/run-docker-bench.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
