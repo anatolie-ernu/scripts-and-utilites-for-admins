@@ -1,0 +1,27 @@
+# Example only. Move/adapt into .github/workflows/ of the target project.
+name: Container security gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "compose*.yml"
+      - "Dockerfile*"
+      - "ops/security/container-hardening/**"
+
+jobs:
+  hardening:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate hardening scripts
+        run: |
+          cd ops/security/container-hardening
+          bash scripts/validate-template.sh
+
+      # Install Trivy using the target project's approved method, then:
+      # - name: Scan approved images
+      #   run: |
+      #     cd ops/security/container-hardening
+      #     TRIVY_SEVERITY=CRITICAL TRIVY_EXIT_CODE=1 bash scripts/scan-images.sh
