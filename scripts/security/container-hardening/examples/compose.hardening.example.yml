@@ -1,0 +1,51 @@
+services:
+  app:
+    image: your-registry.example/your-app:1.0.0
+    user: "10001:10001"
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    pids_limit: 200
+    mem_limit: 512m
+    cpus: 1.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - frontend
+      - backend
+
+  db:
+    image: mariadb:11.8.9
+    user: "999:999"
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 300
+    mem_limit: 1g
+    cpus: 1.5
+    restart: unless-stopped
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - backend
+    # Do not publish the database port on the host unless explicitly required.
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  db-data:
