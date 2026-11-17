@@ -1,0 +1,11 @@
+[Unit]
+Description=ufdbGuard blacklist backup retention cleanup
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/sbin/ufdbguard-backup-cleanup.sh
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=idle
