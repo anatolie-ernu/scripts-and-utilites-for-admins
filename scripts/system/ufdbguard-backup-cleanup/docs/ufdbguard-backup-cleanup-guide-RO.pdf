@@ -1,0 +1,212 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+2 0 obj
+<< /Length 2979 >>
+stream
+BT /F1 8 Tf 36 800 Td 10.5 TL
+(UFDBGUARD - BACKUP RETENTION / OPERATING PROCEDURE) Tj
+T* (Document version: 2026-11-17 | Public sanitized edition) Tj
+T* (Purpose: retain 3 most recent backups; preserve active blacklists;) Tj
+T* (run dry-run before deletion; timer at 04:30.) Tj
+T* (CAUTION: Deletes historical backup folders. Coordinate a shared lock) Tj
+T* (with 20-fetch-ut1.sh for guaranteed updater/cleanup mutual exclusion.) Tj
+T* () Tj
+T* (=== README.md ===) Tj
+T* (# ufdbGuard backup cleanup) Tj
+T* () Tj
+T* (Retains the three most recent `blacklists.bak.YYYY-MM-DD-HHMMSS` directories under `/var/lib/ufdbguard`.) Tj
+T* ( Protects the active `blacklists` directory. Designed for a Linux host using Squid and ufdbGuard.) Tj
+T* () Tj
+T* (## Install) Tj
+T* () Tj
+T* (```bash) Tj
+T* (sudo install -o root -g root -m 0750 ufdbguard-backup-cleanup.sh /usr/local/sbin/ufdbguard-backup-cleanu) Tj
+T* (p.sh) Tj
+T* (sudo install -o root -g root -m 0644 ufdbguard-backup-cleanup.service /etc/systemd/system/) Tj
+T* (sudo install -o root -g root -m 0644 ufdbguard-backup-cleanup.timer /etc/systemd/system/) Tj
+T* (sudo bash -n /usr/local/sbin/ufdbguard-backup-cleanup.sh) Tj
+T* (sudo /usr/local/sbin/ufdbguard-backup-cleanup.sh --dry-run) Tj
+T* (```) Tj
+T* () Tj
+T* (Inspect the simulated deletion list before the first real run. Then:) Tj
+T* () Tj
+T* (```bash) Tj
+T* (sudo /usr/local/sbin/ufdbguard-backup-cleanup.sh) Tj
+T* (sudo systemctl daemon-reload) Tj
+T* (sudo systemctl enable --now ufdbguard-backup-cleanup.timer) Tj
+T* (sudo systemctl list-timers --all | grep ufdbguard-backup-cleanup) Tj
+T* (sudo journalctl -u ufdbguard-backup-cleanup.service -n 100 --no-pager) Tj
+T* (df -h /var) Tj
+T* (```) Tj
+T* () Tj
+T* (## Operational limitations) Tj
+T* () Tj
+T* (- Cleanup is destructive and historical backups cannot be recovered without separate backups.) Tj
+T* (- The updater process check is best-effort only. **Implement a shared lock in the updater before relying) Tj
+T* ( on race-free automation.**) Tj
+T* (- The script expects the ufdbGuard data directory to reside on the `/var` mount; change the mount assert) Tj
+T* (ion for other layouts.) Tj
+T* (- `Persistent=true` may trigger a missed timer run immediately when enabled.) Tj
+T* (- No Squid or ufdbGuard restart is performed.) Tj
+T* (- Review the `systemd` timer separately if updater duration can exceed 04:30.) Tj
+T* () Tj
+T* (## Files) Tj
+T* () Tj
+T* (- `ufdbguard-backup-cleanup.sh`: cleanup and dry-run.) Tj
+T* (- `ufdbguard-backup-cleanup.service`: systemd oneshot.) Tj
+T* (- `ufdbguard-backup-cleanup.timer`: daily at 04:30.) Tj
+T* () Tj
+T* () Tj
+T* (=== ufdbguard-backup-cleanup.sh ===) Tj
+T* (#!/usr/bin/env bash) Tj
+T* (set -Eeuo pipefail) Tj
+T* () Tj
+T* (BASE='/var/lib/ufdbguard') Tj
+T* (ACTIVE="$BASE/blacklists") Tj
+T* (KEEP=3) Tj
+T* (LOCK='/run/ufdbguard-backup-cleanup.lock') Tj
+T* (MODE="${1:-}") Tj
+T* () Tj
+T* (log\(\) { printf '%s [ufdb-cleanup] %s\\n' "$\(date '+%F %T'\)" "$*"; }) Tj
+T* () Tj
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Page /Parent 8 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+endobj
+4 0 obj
+<< /Length 2558 >>
+stream
+BT /F1 8 Tf 36 800 Td 10.5 TL
+([[ -z "$MODE" || "$MODE" == '--dry-run' ]] || {) Tj
+T* (  log "Argument invalid: $MODE"; exit 2;) Tj
+T* (}) Tj
+T* () Tj
+T* (exec 9>"$LOCK") Tj
+T* (flock -n 9 || { log 'Alta curatare ruleaza; iesire.'; exit 0; }) Tj
+T* () Tj
+T* ([[ -d "$BASE" && ! -L "$BASE" ]] || { log 'BASE invalid'; exit 1; }) Tj
+T* ([[ -d "$ACTIVE" && ! -L "$ACTIVE" ]] || { log 'Lista activa lipseste'; exit 1; }) Tj
+T* ([[ "$\(findmnt -n -o TARGET -T "$BASE"\)" == '/var' ]] || {) Tj
+T* (  log 'Mount neasteptat pentru directorul de date'; exit 1;) Tj
+T* (}) Tj
+T* (for svc in squid ufdbguard; do) Tj
+T* (  systemctl is-active --quiet "$svc" || {) Tj
+T* (    log "Serviciu inactiv: $svc; nu sterg nimic"; exit 1;) Tj
+T* (  }) Tj
+T* (done) Tj
+T* () Tj
+T* (# Detectie suplimentara, nu substituie lock comun cu updater-ul.) Tj
+T* (if pgrep -f '[/]etc/ufdbguard/scripts/20-fetch-ut1\\.sh' >/dev/null; then) Tj
+T* (  log 'Updater detectat; curatare amanata.'; exit 0) Tj
+T* (fi) Tj
+T* () Tj
+T* (mapfile -d '' BACKUPS < <\() Tj
+T* (  find "$BASE" -mindepth 1 -maxdepth 1 -type d \\) Tj
+T* (    -name 'blacklists.bak.*' -print0 | LC_ALL=C sort -z) Tj
+T* (\)) Tj
+T* (VALID=\(\)) Tj
+T* (for dir in "${BACKUPS[@]}"; do) Tj
+T* (  name="${dir##*/}") Tj
+T* (  [[ "$name" =~ ^blacklists\\.bak\\.[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$ ]] || continue) Tj
+T* (  [[ ! -L "$dir" ]] || continue) Tj
+T* (  VALID+=\("$dir"\)) Tj
+T* (done) Tj
+T* () Tj
+T* (count=${#VALID[@]}) Tj
+T* (log "Backupuri valide: $count; retentie: $KEEP; mod: ${MODE:-real}") Tj
+T* (\(\( count > KEEP \)\) || { log 'Nimic de eliminat'; exit 0; }) Tj
+T* () Tj
+T* (df -h "$BASE") Tj
+T* (delete_count=$\(\(count - KEEP\)\)) Tj
+T* (log 'Backupuri protejate \(ultimele 3\):') Tj
+T* (printf '  %s\\n' "${VALID[@]:delete_count}") Tj
+T* () Tj
+T* (for \(\( i=0; i<delete_count; i++ \)\); do) Tj
+T* (  dir="${VALID[$i]}") Tj
+T* (  [[ "$dir" == "$BASE"/blacklists.bak.* && -d "$dir" && ! -L "$dir" ]] || exit 1) Tj
+T* (  # Protectie daca directorul a fost modificat in ultimele 3 ore.) Tj
+T* (  if find "$dir" -maxdepth 0 -mmin -180 -print -quit | grep -q .; then) Tj
+T* (    log "OMIS \(recent\): $dir"; continue) Tj
+T* (  fi) Tj
+T* (  if [[ "$MODE" == '--dry-run' ]]; then) Tj
+T* (    log "SIMULARE: $dir") Tj
+T* (  else) Tj
+T* (    log "STERG: $dir") Tj
+T* (    rm -rf --one-file-system -- "$dir") Tj
+T* (  fi) Tj
+T* (done) Tj
+T* (log 'Verificare finala:') Tj
+T* (df -h "$BASE") Tj
+T* (systemctl is-active squid ufdbguard) Tj
+T* () Tj
+T* () Tj
+T* (=== ufdbguard-backup-cleanup.service ===) Tj
+T* ([Unit]) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 8 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 1 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 706 >>
+stream
+BT /F1 8 Tf 36 800 Td 10.5 TL
+(Description=ufdbGuard blacklist backup retention cleanup) Tj
+T* (After=local-fs.target) Tj
+T* () Tj
+T* ([Service]) Tj
+T* (Type=oneshot) Tj
+T* (User=root) Tj
+T* (ExecStart=/usr/local/sbin/ufdbguard-backup-cleanup.sh) Tj
+T* (TimeoutStartSec=30min) Tj
+T* (Nice=10) Tj
+T* (IOSchedulingClass=idle) Tj
+T* () Tj
+T* () Tj
+T* (=== ufdbguard-backup-cleanup.timer ===) Tj
+T* ([Unit]) Tj
+T* (Description=Daily ufdbGuard blacklist backup retention cleanup) Tj
+T* () Tj
+T* ([Timer]) Tj
+T* (OnCalendar=*-*-* 04:30:00) Tj
+T* (Persistent=true) Tj
+T* (RandomizedDelaySec=0) Tj
+T* (Unit=ufdbguard-backup-cleanup.service) Tj
+T* () Tj
+T* ([Install]) Tj
+T* (WantedBy=timers.target) Tj
+T* () Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 8 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 1 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R] /Count 3 >>
+endobj
+9 0 obj
+<< /Type /Catalog /Pages 8 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000077 00000 n 
+0000003107 00000 n 
+0000003233 00000 n 
+0000005842 00000 n 
+0000005968 00000 n 
+0000006724 00000 n 
+0000006850 00000 n 
+0000006919 00000 n 
+trailer
+<< /Size 10 /Root 9 0 R >>
+startxref
+6968
+%%EOF
