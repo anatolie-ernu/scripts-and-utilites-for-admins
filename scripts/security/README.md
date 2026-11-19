@@ -9,3 +9,4 @@ operations.
 | [Drupal + nginx Anti-DDoS](drupal-nginx-antiddos/) | Defense-in-depth configuration for Drupal using nginx, log correlation, Fail2Ban and nftables or iptables/ipset. |
 | [Falco Runtime IDS](falco-runtime-ids/) | Proposed container/runtime intrusion detection design using Falco with a test-first, no-production-deploy-yet policy. |
 | [Container Hardening](container-hardening/) | Reusable Docker hardening template with Trivy, Docker Bench, userns-remap verification, Compose hardening checks, controlled image maintenance and systemd timers. |
+| [Defense Scan](defense-scan/) | Enriches Trivy operator vulnerability reports with EPSS and CISA KEV data and ranks findings P1 to P4. |

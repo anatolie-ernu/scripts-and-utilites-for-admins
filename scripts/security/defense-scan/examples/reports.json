@@ -1,0 +1,74 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "aquasecurity.github.io/v1alpha1",
+      "kind": "VulnerabilityReport",
+      "metadata": {
+        "name": "replicaset-web-7d9f-app",
+        "namespace": "shop",
+        "labels": {
+          "trivy-operator.resource.kind": "ReplicaSet",
+          "trivy-operator.resource.name": "web-7d9f",
+          "trivy-operator.container.name": "app"
+        }
+      },
+      "report": {
+        "artifact": {"repository": "registry.ernu.sec/shop/app", "tag": "1.4.2"},
+        "vulnerabilities": [
+          {
+            "vulnerabilityID": "CVE-2021-44228",
+            "severity": "CRITICAL",
+            "installedVersion": "2.14.1",
+            "fixedVersion": "2.15.0",
+            "title": "Apache Log4j2 JNDI remote code execution",
+            "primaryLink": "https://avd.aquasec.com/nvd/cve-2021-44228"
+          },
+          {
+            "vulnerabilityID": "CVE-2099-0001",
+            "severity": "HIGH",
+            "installedVersion": "3.2.0",
+            "fixedVersion": "3.2.4",
+            "title": "SYNTHETIC TEST ENTRY, not a real vulnerability",
+            "primaryLink": ""
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "aquasecurity.github.io/v1alpha1",
+      "kind": "VulnerabilityReport",
+      "metadata": {
+        "name": "replicaset-api-5c2a-base",
+        "namespace": "shop",
+        "labels": {
+          "trivy-operator.resource.kind": "ReplicaSet",
+          "trivy-operator.resource.name": "api-5c2a",
+          "trivy-operator.container.name": "base"
+        }
+      },
+      "report": {
+        "artifact": {"repository": "registry.ernu.sec/shop/base", "tag": "2024.01"},
+        "vulnerabilities": [
+          {
+            "vulnerabilityID": "CVE-2019-1010022",
+            "severity": "LOW",
+            "installedVersion": "2.28",
+            "fixedVersion": "",
+            "title": "glibc stack guard bypass (no fix available)",
+            "primaryLink": ""
+          },
+          {
+            "vulnerabilityID": "CVE-2099-0001",
+            "severity": "HIGH",
+            "installedVersion": "3.2.0",
+            "fixedVersion": "3.2.4",
+            "title": "SYNTHETIC TEST ENTRY, same CVE in another workload",
+            "primaryLink": ""
+          }
+        ]
+      }
+    }
+  ]
+}
