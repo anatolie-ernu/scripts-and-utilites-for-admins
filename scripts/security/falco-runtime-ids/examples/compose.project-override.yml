@@ -1,0 +1,8 @@
+# Example for a target project.
+# This does not modify the application compose stack.
+# Run Falco as a separate security compose project.
+
+services:
+  falco:
+    environment:
+      ERNU_PROJECT: example-project
