@@ -1,0 +1,28 @@
+# Example only. Copy/adapt into the target project's .github/workflows/.
+name: Validate Falco Runtime IDS template
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "ops/security/falco-runtime-ids/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate shell syntax
+        run: |
+          cd ops/security/falco-runtime-ids
+          for file in scripts/*.sh; do bash -n "$file"; done
+
+      - name: Validate Compose model
+        run: |
+          cd ops/security/falco-runtime-ids
+          cp .env.example .env
+          docker compose config --quiet
+          docker compose -f compose.yml -f compose.docker-metadata.yml config --quiet
+
+      # Modern eBPF runtime validation belongs on a compatible Linux test host.
