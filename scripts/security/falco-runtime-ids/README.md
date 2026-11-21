@@ -1,268 +1,249 @@
-# Falco Runtime IDS — design and test plan
+# Falco Runtime IDS Template
 
-> Status: **DOCUMENTED / NOT IMPLEMENTED / TEST FIRST**
->
-> This directory contains the proposed design for integrating Falco runtime
-> intrusion detection into containerized Linux web platforms. It is deliberately
-> documentation-only. Do not deploy this design to production before validation
-> on a dedicated test host.
+Reusable ERNU.EU template for runtime intrusion detection on Linux Docker hosts.
 
-Brand: **ERNU.EU | IT & Security Solutions**
+**Status:** implementation template ready / test before production  
+**Pinned Falco baseline:** 0.45.2  
+**Engine:** Modern eBPF  
+**Initial policy:** DETECT -> LOG -> ALERT  
+**Brand:** ERNU.EU | IT & Security Solutions
 
-## Purpose
+This directory contains the complete reusable template: Dockerfile, Docker
+Compose, configuration overlays, custom rules, test generators, validation,
+reporting and implementation documentation.
 
-Falco adds a runtime-detection layer below the web application and reverse
-proxy. It observes Linux kernel events and can alert on behavior such as:
+It is **not automatically deployed to production**. Every target project must
+first validate the template on a dedicated test/staging host.
 
-- interactive shells inside application containers;
-- unexpected process execution;
-- writes to sensitive paths;
-- suspicious privilege or mount activity;
-- unexpected network tooling or connections;
-- PHP / application processes spawning shells or administration tools.
-
-Falco complements, rather than replaces, controls such as:
-
-- CDN / edge protection;
-- WAF;
-- reverse proxy controls;
-- Fail2Ban;
-- CMS/application security plugins;
-- backup and recovery.
-
-## Proposed architecture
+## Architecture
 
 ```text
 Internet
   -> CDN / edge
   -> WAF / reverse proxy
-  -> web application containers
+  -> application containers
        - nginx
-       - PHP / application runtime
+       - PHP/application runtime
        - database
        - cache
-       - backup / maintenance
 
-Security controls
-  - WAF                  -> HTTP/application attacks
-  - Fail2Ban             -> log-driven IP blocking
-  - application security -> CMS/application controls
-  - Falco                -> kernel/runtime behavior detection
-  - backup               -> recovery/resilience
+Security layers
+  - WAF / reverse proxy   -> HTTP/application attacks
+  - Fail2Ban              -> log-driven IP blocking
+  - application security  -> CMS/application controls
+  - Falco                 -> kernel/runtime behavior detection
+  - backup                -> recovery/resilience
 ```
 
-## Preferred deployment model for testing
+Falco complements the existing controls; it does not replace them.
 
-The preferred test design is:
+## Repository layout
 
-- Falco as a dedicated container;
-- Modern eBPF engine;
-- least-privilege capabilities where supported;
-- explicit read-only host mounts required by Falco;
-- JSON/event logging;
-- custom rules stored in Git;
-- detection and alerting only during the first test phase;
-- no automatic kill, quarantine or IP ban actions.
+```text
+falco-runtime-ids/
+├── README.md
+├── Dockerfile
+├── compose.yml
+├── compose.docker-metadata.yml
+├── .env.example
+├── .gitignore
+├── Makefile
+├── .github-actions-example.yml
+├── config/
+│   └── 10-ernu-runtime.yaml
+├── rules.d/
+│   ├── ernu-container.yaml
+│   ├── ernu-web-runtime.yaml
+│   └── ernu-filesystem.yaml
+├── scripts/
+│   ├── preflight.sh
+│   ├── validate.sh
+│   ├── start.sh
+│   ├── stop.sh
+│   ├── status.sh
+│   ├── test-alerts.sh
+│   ├── report.sh
+│   └── update-version.sh
+├── examples/
+│   ├── compose.project-override.yml
+│   └── falco.logrotate
+├── docs/
+│   ├── IMPLEMENTATION-GUIDE-RO.md
+│   └── TEST-AND-IMPLEMENTATION-PLAN-RO.md
+├── logs/
+└── reports/
+```
 
-Falco's official container documentation states that the Modern eBPF driver is
-bundled with Falco and does not require separate driver installation. The
-official least-privileged container example uses the capabilities and host
-mounts required for kernel-event visibility.
+## Why Modern eBPF
 
-Official references:
+Falco's current official Docker documentation states that Modern eBPF is
+bundled into Falco and does not require separate driver installation.
+
+The template therefore uses:
+
+```yaml
+engine:
+  kind: modern_ebpf
+```
+
+The default Compose service follows Falco's least-privileged Docker model:
+
+```text
+cap_drop: ALL
+cap_add:
+  - SYS_ADMIN
+  - SYS_RESOURCE
+  - SYS_PTRACE
+```
+
+The host paths used for kernel/runtime visibility are:
+
+```text
+/sys/kernel/tracing -> /sys/kernel/tracing:ro
+/proc               -> /host/proc:ro
+/etc                -> /host/etc:ro
+```
+
+Some hosts expose tracefs at `/sys/kernel/debug/tracing`. Set
+`TRACEFS_HOST` in `.env` accordingly.
+
+Official reference:
 
 - https://falco.org/docs/setup/container/
-- https://falco.org/docs/concepts/event-sources/kernel/
-- https://falco.org/docs/setup/packages/
 
-## Native host installation
+## Docker socket policy
 
-A native DEB/systemd installation is also officially supported and remains a
-valid fallback for hosts where containerized Modern eBPF is unsuitable.
+The base `compose.yml` intentionally does **not** mount Docker socket.
 
-Reference concept:
+If test results show that richer Docker container metadata is required, start
+with the explicit override:
 
 ```bash
-# Example only — do not run in production before test validation.
-# Follow the current official Falco package documentation when testing.
-
-apt update
-apt install falco
-
-# Service name depends on the selected driver/setup.
-systemctl status falco-modern-bpf.service
+bash scripts/start.sh --docker-metadata
 ```
 
-The original operational idea was to install Falco directly on the Linux host.
-For ERNU.EU containerized platforms, the preferred candidate is container +
-Modern eBPF, subject to test results.
+which adds:
 
-## Candidate custom detections
+```text
+/var/run/docker.sock:/host/var/run/docker.sock
+```
 
-The initial custom ruleset should focus on high-value events with low expected
-noise.
+Treat Docker socket access as highly privileged and document the decision in
+the target project.
 
-### Application runtime spawning a shell
+## Custom detections
 
-Examples:
+### Container shell
+
+`ernu-container.yaml` detects shells and common network tools executed inside
+containers.
+
+### Web runtime -> shell
+
+`ernu-web-runtime.yaml` adds high-value detections such as:
 
 ```text
 php-fpm -> sh
 php-fpm -> bash
-php      -> dash
+PHP -> curl/wget/nc/socat
 ```
-
-This can indicate command execution through an exploited application or plugin.
-
-### Unexpected administration tools in application containers
-
-Candidate commands:
-
-```text
-bash
-sh
-curl
-wget
-nc
-ncat
-socat
-python
-perl
-```
-
-These must be tuned against legitimate maintenance activity before production.
 
 ### Sensitive writes
 
-Candidate paths:
+`ernu-filesystem.yaml` detects container writes below selected system paths:
 
 ```text
-/etc/
-/bin/
-/usr/bin/
-wp-config.php
-wp-content/plugins/
-wp-content/themes/
+/etc
+/bin
+/usr/bin
+/usr/sbin
 ```
 
-Rules must distinguish legitimate update/deploy operations from unexpected
-runtime modification.
+Rules must be tuned against legitimate deploy/update/maintenance activity
+before production adoption.
 
-### Privilege / namespace / mount anomalies
-
-Test detections for:
-
-- unexpected privilege escalation;
-- unusual mount operations;
-- namespace manipulation;
-- container escape indicators;
-- unexpected process execution in database/cache containers.
-
-## Docker socket caution
-
-Do not mount `/var/run/docker.sock` automatically simply because it appears in
-reference examples.
-
-The Docker socket is highly privileged. During testing, determine whether
-container metadata requirements justify exposing it to the Falco container.
-If it is used:
-
-- mount only where technically necessary;
-- keep Falco isolated from application networks where possible;
-- do not provide the socket to unrelated containers;
-- document the threat model and rollback path.
-
-## Test prerequisites
-
-Before the first lab deployment collect:
+## Quick start on a test host
 
 ```bash
-uname -r
-mount | grep -E 'tracefs|debugfs'
-ls -ld /sys/kernel/tracing /sys/kernel/debug/tracing 2>/dev/null
-sysctl -n net.core.bpf_jit_enable
-docker version
-docker compose version
+cd falco-runtime-ids
+
+cp .env.example .env
+
+bash scripts/preflight.sh
+bash scripts/validate.sh
+bash scripts/start.sh
+bash scripts/status.sh
+bash scripts/test-alerts.sh
+bash scripts/report.sh
 ```
 
-For Modern eBPF, verify kernel compatibility, tracefs availability and BPF JIT
-settings according to current Falco documentation.
+To test with Docker metadata:
 
-## Test phases
+```bash
+bash scripts/start.sh --docker-metadata
+```
 
-### Phase 0 — documentation only
+Stop:
 
-Current state.
+```bash
+bash scripts/stop.sh
+```
 
-- no package installation;
-- no Falco container;
-- no kernel changes;
-- no production configuration.
+Equivalent Make targets:
 
-### Phase 1 — isolated test host
+```bash
+make preflight
+make validate
+make start
+make status
+make test
+make report
+make stop
+```
 
-Goals:
+## Generated data
 
-- start Falco with Modern eBPF;
-- confirm syscall event collection;
-- validate CPU/RAM overhead;
-- validate container identification;
-- confirm log persistence;
-- verify restart behavior;
-- verify no impact on Docker workloads.
+Falco JSON alerts:
 
-### Phase 2 — controlled event generation
+```text
+logs/events.json
+```
 
-Generate known benign test events:
+Generated summaries:
 
-- shell inside a disposable test container;
-- write to a test-sensitive path;
-- execution of curl/wget in a disposable container;
-- expected maintenance commands;
-- backup activity;
-- deployment activity.
+```text
+reports/falco-summary-YYYYMMDD_HHMMSS.txt
+```
 
-Record expected vs observed alerts.
+Runtime logs/reports are ignored by Git.
 
-### Phase 3 — false-positive tuning
+## Version management
 
-Build allowlists/exceptions for legitimate activity such as:
+The template is pinned to Falco 0.45.2.
 
-- backup jobs;
-- WP-CLI or CMS CLI operations;
-- deployment workflows;
-- package/update operations;
-- log rotation;
-- health checks.
+When upgrading:
 
-Do not broadly suppress rule classes merely to reduce noise.
+```bash
+bash scripts/update-version.sh 0.45.3
+```
 
-### Phase 4 — alert pipeline
+Then:
 
-Only after the rules are stable evaluate:
+1. review upstream Falco release notes;
+2. run `scripts/validate.sh`;
+3. test on the dedicated host;
+4. replay `scripts/test-alerts.sh`;
+5. measure CPU/RAM/event volume;
+6. review false positives;
+7. commit the version change only after validation.
 
-- structured JSON log files;
-- syslog;
-- SIEM/OpenSearch/Elastic;
-- Loki/Grafana;
-- email/webhook notifications.
+Current official release source:
 
-### Phase 5 — production readiness review
-
-Production adoption requires documented results for:
-
-- compatibility;
-- resource consumption;
-- alert volume;
-- false-positive rate;
-- fail/restart behavior;
-- upgrade procedure;
-- rollback;
-- security impact of capabilities and mounts.
+- https://github.com/falcosecurity/falco/releases
 
 ## Production policy
 
-Initial production mode, if approved after testing:
+Initial production mode, after approval:
 
 ```text
 Falco
@@ -271,45 +252,32 @@ Falco
   -> ALERT
 ```
 
-Not initially:
+Not enabled by this template:
 
 ```text
-Falco -> kill process
-Falco -> stop container
-Falco -> ban IP
-Falco -> automatic quarantine
+automatic process kill
+automatic container stop
+automatic IP ban
+automatic quarantine
 ```
 
-Automated response may be considered only after a separate risk assessment.
+Automated response requires a separate risk assessment and test plan.
 
-## Proposed repository layout after successful testing
+## Project integration
 
-No executable files are committed yet. If testing is approved, the expected
-layout is:
+See:
 
 ```text
-scripts/security/falco-runtime-ids/
-├── README.md
-├── docs/
-│   └── TEST-AND-IMPLEMENTATION-PLAN-RO.md
-├── config/
-│   ├── falco.yaml
-│   └── rules.d/
-│       ├── ernu-container.yaml
-│       ├── ernu-web-runtime.yaml
-│       └── ernu-filesystem.yaml
-└── examples/
-    └── compose.falco.example.yml
+docs/IMPLEMENTATION-GUIDE-RO.md
+docs/TEST-AND-IMPLEMENTATION-PLAN-RO.md
 ```
 
-Executable/configuration artifacts should only be added after the test phase
-confirms the required capabilities, mounts and rule behavior.
+Official references:
 
-## Decision record
-
-Current decision:
-
-**Document now. Test later on a dedicated test system. Do not deploy Falco to
-production yet.**
+- https://falco.org/docs/setup/container/
+- https://falco.org/docs/concepts/rules/
+- https://falco.org/docs/concepts/outputs/channels/
+- https://falco.org/docs/configuration/
+- https://github.com/falcosecurity/falco/releases
 
 Copyright © 2026 ERNU.EU. All rights reserved.
