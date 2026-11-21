@@ -1,0 +1,31 @@
+services:
+  falco:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        FALCO_VERSION: ${FALCO_VERSION:-0.45.2}
+    image: ernu/falco-runtime-ids:${FALCO_VERSION:-0.45.2}
+    container_name: ernu-falco
+    restart: unless-stopped
+    network_mode: none
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - SYS_PTRACE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m
+      - /run:rw,nosuid,nodev,noexec,size=16m
+      - /root/.cache:rw,nosuid,nodev,noexec,size=64m
+    volumes:
+      - ${TRACEFS_HOST:-/sys/kernel/tracing}:/sys/kernel/tracing:ro
+      - /proc:/host/proc:ro
+      - /etc:/host/etc:ro
+      - ./logs:/var/log/falco
+    pids_limit: 256
+    stop_grace_period: 20s
