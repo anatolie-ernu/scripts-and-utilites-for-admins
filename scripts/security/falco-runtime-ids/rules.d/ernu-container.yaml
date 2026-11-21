@@ -1,0 +1,39 @@
+- list: ernu_shell_binaries
+  items: [sh, bash, dash, ash, zsh, ksh]
+
+- list: ernu_network_tools
+  items: [curl, wget, nc, ncat, netcat, socat, telnet]
+
+- macro: ernu_container
+  condition: container.id != host
+
+- macro: ernu_spawned_process
+  condition: evt.type in (execve, execveat)
+
+- rule: ERNU Shell Spawned in Container
+  desc: Detect a shell process started inside a container.
+  condition: >
+    ernu_container and
+    ernu_spawned_process and
+    proc.name in (ernu_shell_binaries)
+  output: >
+    ERNU runtime alert - shell spawned in container
+    user=%user.name uid=%user.uid
+    container_id=%container.id container_name=%container.name
+    process=%proc.name parent=%proc.pname cmdline=%proc.cmdline
+  priority: NOTICE
+  tags: [ernu, container, execution, shell]
+
+- rule: ERNU Network Tool Started in Container
+  desc: Detect common network administration/download tools executed in a container.
+  condition: >
+    ernu_container and
+    ernu_spawned_process and
+    proc.name in (ernu_network_tools)
+  output: >
+    ERNU runtime alert - network tool started in container
+    user=%user.name uid=%user.uid
+    container_id=%container.id container_name=%container.name
+    process=%proc.name parent=%proc.pname cmdline=%proc.cmdline
+  priority: NOTICE
+  tags: [ernu, container, network, execution]
