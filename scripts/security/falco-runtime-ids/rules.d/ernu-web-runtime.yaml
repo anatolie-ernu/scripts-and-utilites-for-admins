@@ -1,0 +1,41 @@
+- list: ernu_web_runtime_parents
+  items: [php, php-fpm, php-fpm8.2, php-fpm8.3, php-fpm8.4, apache2, httpd, nginx]
+
+- list: ernu_shell_binaries_web
+  items: [sh, bash, dash, ash, zsh, ksh]
+
+- macro: ernu_web_container
+  condition: container.id != host
+
+- macro: ernu_web_spawned_process
+  condition: evt.type in (execve, execveat)
+
+- rule: ERNU Web Runtime Spawned Shell
+  desc: Detect a web runtime spawning a shell in a container.
+  condition: >
+    ernu_web_container and
+    ernu_web_spawned_process and
+    proc.name in (ernu_shell_binaries_web) and
+    proc.pname in (ernu_web_runtime_parents)
+  output: >
+    ERNU CRITICAL runtime alert - web process spawned shell
+    user=%user.name uid=%user.uid
+    container_id=%container.id container_name=%container.name
+    shell=%proc.name parent=%proc.pname cmdline=%proc.cmdline
+  priority: CRITICAL
+  tags: [ernu, web, container, execution, critical]
+
+- rule: ERNU PHP Started Network Tool
+  desc: Detect PHP launching common download or network tools.
+  condition: >
+    ernu_web_container and
+    ernu_web_spawned_process and
+    proc.pname in (php, php-fpm, php-fpm8.2, php-fpm8.3, php-fpm8.4) and
+    proc.name in (curl, wget, nc, ncat, netcat, socat)
+  output: >
+    ERNU CRITICAL runtime alert - PHP started network tool
+    user=%user.name uid=%user.uid
+    container_id=%container.id container_name=%container.name
+    process=%proc.name parent=%proc.pname cmdline=%proc.cmdline
+  priority: CRITICAL
+  tags: [ernu, php, web, network, execution, critical]
