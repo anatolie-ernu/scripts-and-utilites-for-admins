@@ -1,0 +1,6 @@
+services:
+  falco:
+    volumes:
+      # WARNING: access to the Docker socket is highly privileged.
+      # Enable this override only after the project threat-model review.
+      - /var/run/docker.sock:/host/var/run/docker.sock
