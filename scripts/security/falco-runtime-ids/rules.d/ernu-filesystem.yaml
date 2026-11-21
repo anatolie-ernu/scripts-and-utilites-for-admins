@@ -1,0 +1,23 @@
+- macro: ernu_open_write
+  condition: >
+    evt.type in (open, openat, openat2) and
+    evt.is_open_write=true and
+    fd.typechar='f' and
+    fd.num>=0
+
+- rule: ERNU Write Below Sensitive System Directory
+  desc: Detect writes below selected system directories from a container.
+  condition: >
+    container.id != host and
+    ernu_open_write and
+    (fd.name startswith /etc or
+     fd.name startswith /bin or
+     fd.name startswith /usr/bin or
+     fd.name startswith /usr/sbin)
+  output: >
+    ERNU runtime alert - sensitive system path opened for writing
+    file=%fd.name user=%user.name uid=%user.uid
+    container_id=%container.id container_name=%container.name
+    process=%proc.name parent=%proc.pname cmdline=%proc.cmdline
+  priority: ERROR
+  tags: [ernu, container, filesystem, persistence]
