@@ -31,6 +31,12 @@ Website: [https://www.ernu.eu](https://www.ernu.eu)
 | [Falco Runtime IDS](scripts/security/falco-runtime-ids/) | Design-only runtime intrusion detection layer for Linux containers using Falco; deployment deferred until dedicated test-host validation. | [README](scripts/security/falco-runtime-ids/README.md) · [RO test plan](scripts/security/falco-runtime-ids/docs/TEST-AND-IMPLEMENTATION-PLAN-RO.md) |
 | [Container Hardening](scripts/security/container-hardening/) | Reusable Docker hardening template with Trivy image scanning, Docker Bench Security, userns-remap verification, Compose hardening checks and controlled weekly image maintenance. | [README](scripts/security/container-hardening/README.md) · [A.4 guide](scripts/security/container-hardening/docs/A4-CONTAINER-HARDENING-RO.md) · [Test plan](scripts/security/container-hardening/docs/TEST-PLAN-RO.md) · [Project integration](scripts/security/container-hardening/docs/PROJECT-INTEGRATION-RO.md) |
 
+### Virtualization and network infrastructure
+
+| Utility | Description | Documentation |
+|---|---|---|
+| [Proxmox CORE/DMZ LACP](scripts/networking/proxmox-core-dmz-lacp/) | Linux Bridge and Open vSwitch alternatives, dual LACP uplinks, VLAN 13 management, ten named SDN VNets and Cisco Catalyst 3560G config. | [README](scripts/networking/proxmox-core-dmz-lacp/README.md) · [RO guide](scripts/networking/proxmox-core-dmz-lacp/docs/IMPLEMENTATION-RO.md) · [Cisco config](scripts/networking/proxmox-core-dmz-lacp/cisco-3560g-lacp.cfg) |
+
 ### Windows and patch management
 
 | Utility | Description | Documentation |
