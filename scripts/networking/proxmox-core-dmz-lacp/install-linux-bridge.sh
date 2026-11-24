@@ -134,7 +134,7 @@ vlan: DMZ
     bridge vmbr1
 ZONES
 cat > "$SDNDIR/vnets.cfg" <<'VNETS'
-vnet: CoreRdio
+vnet: Radio
     zone CORE
     alias CORE-RadioMon
     tag 50
