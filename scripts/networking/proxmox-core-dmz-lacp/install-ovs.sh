@@ -64,6 +64,7 @@ iface vmbr0 inet manual
     ovs_ports bond0 mgmt13
 # CORE
 
+auto bond0
 allow-vmbr0 bond0
 iface bond0 inet manual
     ovs_type OVSBond
@@ -71,6 +72,7 @@ iface bond0 inet manual
     ovs_bonds nic0 nic1
     ovs_options bond_mode=balance-tcp lacp=active other_config:lacp-time=fast trunks=12,13,20,21,22,25,50,121
 
+auto mgmt13
 allow-vmbr0 mgmt13
 iface mgmt13 inet static
     address @MGMT_IP@/24
@@ -85,6 +87,7 @@ iface vmbr1 inet manual
     ovs_ports bond1
 # DMZ
 
+auto bond1
 allow-vmbr1 bond1
 iface bond1 inet manual
     ovs_type OVSBond
@@ -127,7 +130,7 @@ vlan: DMZ
     bridge vmbr1
 ZONES
 cat > "$SDNDIR/vnets.cfg" <<'VNETS'
-vnet: CoreRdio
+vnet: Radio
     zone CORE
     alias CORE-RadioMon
     tag 50
@@ -180,4 +183,6 @@ VNETS
 echo "STAGED SUCCESSFULLY: $MODE; backup=$BACKUP"
 echo 'No live reload or reboot was performed. Validate Cisco LACP/trunks before reboot.'
 echo "Proxmox management target: https://$MGMT_IP:8006"
-echo 'After management is back: pvesh set /cluster/sdn'
+echo 'After management is back, verify both LACP bonds and gateway from console.'
+echo 'Preview SDN: pvesh get /cluster/sdn/dry-run --node "$(hostname -s)"'
+echo 'Apply SDN from console: pvesh set /cluster/sdn; verify uplinks and management again.'
