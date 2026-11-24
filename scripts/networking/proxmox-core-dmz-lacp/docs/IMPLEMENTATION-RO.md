@@ -6,7 +6,7 @@ Reproducerea logică a port group-urilor VMware pe Proxmox VE cu două trunk-uri
 ## Porturi și VLAN-uri
 - CORE: nic0 + nic1, bond0, vmbr0; VLAN 12/13/20/21/22/25/50/121; management tagged VLAN 13.
 - DMZ: nic2 + nic3, bond1, vmbr1; VLAN 217/218; fără IP de management al hypervisorului.
-- Cisco: Po10 CORE (Gi0/27 → nic0, Gi0/28 → nic1), Po11 DMZ (Gi0/29 → nic2, Gi0/30 → nic3); două EtherChannel-uri independente. Verifică fizic corespondența înainte de aplicare. **Cisco Catalyst 3560G acceptă EtherChannel 1–48; Po101/Po102 nu sunt valide.** Identificatorul SERVER-101 este păstrat în descrierile porturilor/Port-Channel-urilor.
+- Cisco: Po40 CORE (Gi0/27 → nic0, Gi0/28 → nic1), Po41 DMZ (Gi0/29 → nic2, Gi0/30 → nic3); două EtherChannel-uri independente. Verifică fizic corespondența înainte de aplicare. **Cisco Catalyst 3560G acceptă EtherChannel 1–48; Po101/Po102 nu sunt valide.** Identificatorul SERVER-101 este păstrat în descrierile porturilor/Port-Channel-urilor.
 - La început este conectat un singur cablu CORE. LACP poate opera cu un membru dacă atât hostul cât și switchul acceptă acest lucru. DMZ rămâne fără uplink până la conectarea cablurilor.
 
 ## Inventar SDN
@@ -45,7 +45,7 @@ Pe Cisco: `show interfaces status`, `show etherchannel summary`, `show running-c
 2. Instalează `openvswitch-switch` numai pentru varianta OVS, în timp ce rețeaua veche este operațională.
 3. Pregătește configurația: `MGMT_IP=<IP> MGMT_GW=<IP_GW> bash install-ovs.sh --install` sau `install-linux-bridge.sh`. Instalatorul scrie fișiere și backup; **nu** execută ifreload/reboot.
 4. Revizuiește fișierul `/etc/network/interfaces`, `/etc/hosts`, `/etc/pve/sdn/zones.cfg`, `/etc/pve/sdn/vnets.cfg`. În special, confirmă că nu există interfețe personalizate în `interfaces.d`.
-5. Pregătește Cisco Po10 și LACP active pe portul real conectat la nic0. Native VLAN nu trebuie să fie 13. Configurează allowed VLAN list exact. Dacă 3560G cere `switchport trunk encapsulation dot1q`, configureaz-o înainte de `switchport mode trunk`.
+5. Pregătește Cisco Po40 și LACP active pe portul real conectat la nic0. Native VLAN nu trebuie să fie 13. Configurează allowed VLAN list exact. Dacă 3560G cere `switchport trunk encapsulation dot1q`, configureaz-o înainte de `switchport mode trunk`.
 6. Repornește hostul **numai** când ești pregătit să comuți Cisco și să intervii la consolă dacă este necesar. Așteaptă reconvergența LACP. Nu presupune că restartul hostului este sigur dacă lipsește accesul out-of-band.
 7. Verifică accesul HTTPS la noul IP și conectivitatea gatewayului.
 8. Aplică SDN cu `pvesh set /cluster/sdn`. Confirmă în Datacenter → SDN → Zones/VNets.
