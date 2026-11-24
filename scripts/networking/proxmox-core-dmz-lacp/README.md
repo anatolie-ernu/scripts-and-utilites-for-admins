@@ -17,7 +17,7 @@ Two mutually exclusive installers reproduce a VMware-style port-group structure 
 | DMZ | nic2 + nic3 | bond1, LACP active | vmbr1 | 217,218 |
 | Management | through CORE | VLAN-tagged 13 | vmbr0.13 (Linux) / mgmt13 (OVS) | 13 |
 
-Proxmox SDN defines VNet IDs `CoreRdio, CoreMon, CoreVoip, CoreApp, UserLAN, CoreDB, Infra, Mgmt, DMZApp, DMZInfra`. Original VMware names remain in alias fields.
+Proxmox SDN defines VNet IDs `Radio, CoreMon, CoreVoip, CoreApp, UserLAN, CoreDB, Infra, Mgmt, DMZApp, DMZInfra`. Original VMware names remain in alias fields.
 
 ## Preparing on a test node
 
@@ -34,8 +34,8 @@ The RFC 5737 addresses above are examples. Scripts do not automatically restart 
 
 4. Configure switch Port-Channel40 with CORE VLAN 13 **tagged**, LACP active, and a single minimum active member. Confirm the port-channel can operate with the first host cable alone. Configure Port-Channel41 separately for DMZ.
 5. Restart **only with an out-of-band console or a tested recovery plan**. The management interface will change addresses and will not be reachable until the Cisco trunk negotiates properly.
-6. After access is restored, apply SDN via `pvesh set /cluster/sdn`, then validate VNets and VM assignment.
+6. After access is restored, preview SDN via `pvesh get /cluster/sdn/dry-run --node "$(hostname -s)"`, apply from console via `pvesh set /cluster/sdn`, then validate VNets, uplinks, management and VM assignment.
 
 **Not interchangeable:** do not run OVS and Linux Bridge installers one after another or use Linux bonds in OVS bridges.
 
-This implementation is a staging template, not a zero-downtime migration. No unverified claim of production validation is made.
+This implementation is a staging template, not a zero-downtime migration. A manually corrected OVS deployment was validated on 2026-11-24: both bonds negotiated LACP, management reached its gateway and SDN apply preserved the uplinks and management while renaming VLAN 50 to Radio. The updated installer has not yet been tested end-to-end on a fresh node; cold reboot, failover and VM traffic tests remain pending. Linux Bridge variant remains untested live.
