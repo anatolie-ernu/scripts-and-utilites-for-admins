@@ -6,7 +6,7 @@ Reproducerea logică a port group-urilor VMware pe Proxmox VE cu două trunk-uri
 ## Porturi și VLAN-uri
 - CORE: nic0 + nic1, bond0, vmbr0; VLAN 12/13/20/21/22/25/50/121; management tagged VLAN 13.
 - DMZ: nic2 + nic3, bond1, vmbr1; VLAN 217/218; fără IP de management al hypervisorului.
-- Cisco: Po10 CORE, Po11 DMZ; două EtherChannel-uri independente.
+- Cisco: Po10 CORE (Gi0/27 → nic0, Gi0/28 → nic1), Po11 DMZ (Gi0/29 → nic2, Gi0/30 → nic3); două EtherChannel-uri independente. Verifică fizic corespondența înainte de aplicare.
 - La început este conectat un singur cablu CORE. LACP poate opera cu un membru dacă atât hostul cât și switchul acceptă acest lucru. DMZ rămâne fără uplink până la conectarea cablurilor.
 
 ## Inventar SDN
@@ -38,7 +38,7 @@ ls -l /etc/network/interfaces.d/
 find /etc/pve/sdn -maxdepth 1 -type f -print
 ```
 
-Pe Cisco: `show interfaces status`, `show etherchannel summary`, `show run interface <PORT>`, `show interfaces trunk`, `show vlan brief`. Verifică VLAN 13 existent și rutabil către gateway. Confirmă că nu suprascrii Port-Channel-uri existente.
+Pe Cisco: `show interfaces status`, `show etherchannel summary`, `show running-config interface GigabitEthernet0/27` (repetă pentru Gi0/28, Gi0/29, Gi0/30), `show interfaces trunk`, `show vlan brief`. Verifică VLAN 13 existent și rutabil către gateway. Confirmă că nu suprascrii Port-Channel-uri existente.
 
 ## Migrare recomandată
 1. Confirmă IP-ul nou liber, gateway-ul și accesul la consolă/iLO. Portul switch-ului în ACCESS și IP-ul hostului vechi **vor înceta să funcționeze** după trecere.
