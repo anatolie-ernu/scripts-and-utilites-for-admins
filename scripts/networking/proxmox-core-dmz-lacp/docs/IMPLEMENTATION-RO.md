@@ -51,6 +51,47 @@ Pe Cisco: `show interfaces status`, `show etherchannel summary`, `show running-c
 8. Aplică SDN cu `pvesh set /cluster/sdn`. Confirmă în Datacenter → SDN → Zones/VNets.
 9. Conectează porturile secundare, verifică active links și testează failover (un membru deconectat, fără oprirea managementului).
 
+## STP PortFast trunk și BPDU Guard — configurate pe Po40 și Po41
+
+Pe switch au fost aplicate următoarele comenzi (starea operativă se verifică după conectarea cablurilor):
+
+```text
+interface Port-channel40
+ spanning-tree portfast trunk
+ spanning-tree bpduguard enable
+interface Port-channel41
+ spanning-tree portfast trunk
+ spanning-tree bpduguard enable
+```
+
+- **PortFast trunk** scurtează tranziția STP spre forwarding pentru un server conectat la marginea rețelei. Nu îl folosi pentru conexiuni între switch-uri sau în prezența unor punți L2 necontrolate.
+- **BPDU Guard** poate pune interfața în `err-disabled` dacă recepționează BPDU-uri. Este util doar când hypervisorul este un endpoint fără STP/RSTP activ și nu retransmite BPDU-uri.
+- În cazul OVS: verifică faptul că STP și RSTP sunt dezactivate pe `vmbr0` și `vmbr1`. Nu conecta cele două bridge-uri unul la altul.
+- Pentru prima validare se poate dezactiva temporar BPDU Guard, fără a elimina PortFast:
+
+```text
+configure terminal
+interface Port-channel40
+ no spanning-tree bpduguard enable
+exit
+interface Port-channel41
+ no spanning-tree bpduguard enable
+exit
+end
+```
+
+După verificarea cablării, LACP, absenței BPDU-urilor și a stării STP, poți reactiva controlul explicit. Nu salva configurația finală până nu verifici că porturile nu sunt `err-disabled`.
+
+Verificare read-only:
+
+```text
+show spanning-tree interface port-channel 40 detail
+show spanning-tree interface port-channel 41 detail
+show interfaces status err-disabled
+show etherchannel summary
+show lacp neighbor
+```
+
 ## Validare
 Linux Bridge:
 ```bash
