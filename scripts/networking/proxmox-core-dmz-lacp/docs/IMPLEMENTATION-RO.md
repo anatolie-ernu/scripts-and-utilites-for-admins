@@ -6,13 +6,13 @@ Reproducerea logică a port group-urilor VMware pe Proxmox VE cu două trunk-uri
 ## Porturi și VLAN-uri
 - CORE: nic0 + nic1, bond0, vmbr0; VLAN 12/13/20/21/22/25/50/121; management tagged VLAN 13.
 - DMZ: nic2 + nic3, bond1, vmbr1; VLAN 217/218; fără IP de management al hypervisorului.
-- Cisco: Po40 CORE (Gi0/27 → nic0, Gi0/28 → nic1), Po41 DMZ (Gi0/29 → nic2, Gi0/30 → nic3); două EtherChannel-uri independente. Verifică fizic corespondența înainte de aplicare. **Cisco Catalyst 3560G acceptă EtherChannel 1–48; Po101/Po102 nu sunt valide.** Identificatorul SERVER-101 este păstrat în descrierile porturilor/Port-Channel-urilor.
+- Cisco: Po40 CORE (Gi0/27 → nic0, Gi0/28 → nic1), Po41 DMZ (Gi0/29 → nic2, Gi0/30 → nic3); două EtherChannel-uri independente. Verifică fizic corespondența și hostname-ul switch-ului înainte de aplicare, inclusiv datacenterul corect. **Cisco Catalyst 3560G acceptă EtherChannel 1–48; Po101/Po102 nu sunt valide.** Identificatorul SERVER-101 este păstrat în descrierile porturilor/Port-Channel-urilor.
 - La început este conectat un singur cablu CORE. LACP poate opera cu un membru dacă atât hostul cât și switchul acceptă acest lucru. DMZ rămâne fără uplink până la conectarea cablurilor.
 
 ## Inventar SDN
 | VNet | Alias VMware | VLAN | Zone |
 |---|---|---:|---|
-| CoreRdio | CORE-RadioMon | 50 | CORE |
+| Radio | CORE-RadioMon | 50 | CORE |
 | CoreMon | CORE-Monitoring | 12 | CORE |
 | CoreVoip | CORE-Voip | 25 | CORE |
 | CoreApp | CORE-Application | 21 | CORE |
@@ -48,7 +48,7 @@ Pe Cisco: `show interfaces status`, `show etherchannel summary`, `show running-c
 5. Pregătește Cisco Po40 și LACP active pe portul real conectat la nic0. Native VLAN nu trebuie să fie 13. Configurează allowed VLAN list exact. Cisco 3560G cu encapsularea implicită `Auto` respinge `switchport mode trunk`; configurează obligatoriu `switchport trunk encapsulation dot1q` înainte de `switchport mode trunk` atât pe Po40/Po41, cât și pe Gi0/27–30. Dacă interfețele sunt deja membre EtherChannel și IOS refuză modificarea, verifică configurația înainte de a scoate membrii din channel-group.
 6. Repornește hostul **numai** când ești pregătit să comuți Cisco și să intervii la consolă dacă este necesar. Așteaptă reconvergența LACP. Nu presupune că restartul hostului este sigur dacă lipsește accesul out-of-band.
 7. Verifică accesul HTTPS la noul IP și conectivitatea gatewayului.
-8. Aplică SDN cu `pvesh set /cluster/sdn`. Confirmă în Datacenter → SDN → Zones/VNets.
+8. După validarea uplinkurilor și managementului, previzualizează SDN cu `pvesh get /cluster/sdn/dry-run --node "$(hostname -s)"`. Aplică din consola locală cu `pvesh set /cluster/sdn`. Confirmă în Datacenter → SDN → Zones/VNets și verifică din nou bond-urile și gateway-ul.
 9. Conectează porturile secundare, verifică active links și testează failover (un membru deconectat, fără oprirea managementului).
 
 ## STP PortFast trunk și BPDU Guard — configurate pe Po40 și Po41
@@ -128,3 +128,27 @@ show mac address-table vlan 13
 - LACP pe 3560G poate pierde trafic scurt la convergență; un singur flow nu agregă liniar viteza ambelor porturi.
 - Validarea sintactică nu înlocuiește un test live pe modelul exact de switch și pe versiunea Proxmox.
 - Repository-ul public nu conține hostnames/IP-uri interne reale, parole sau secrete.
+
+## Lecții din validarea OVS — 2026-11-24
+
+- Instalatorul OVS declară explicit `auto bond0`, `auto bond1` și `auto mgmt13` în plus față de clasele allow. Inițial aceste componente nu au fost activate la boot; activarea individuală cu ifup a restabilit obiectele. Pornirea la rece cu scriptul corectat rămâne de validat.
+- Dacă OVS transmite LACP, dar nu primește răspuns, verifică identitatea switch-ului și datacenterul înainte de orice resetare de port sau modificare a STP. În test, switch-ul configurat inițial era din alt datacenter; după corectare ambele bond-uri au negociat.
+- SDN poate genera definiții suplimentare pentru vmbr0/vmbr1 și porturi interne `ln_*`. Aceste definiții nu reprezintă automat o eroare; nu elimina permanent fișierul generat și nu edita manual porturile SDN. În test, aplicarea SDN a păstrat bond0, mgmt13 și bond1. VLAN 50 utilizează acum VNet Radio și portul intern ln_Radio.
+- Avertismentele contradictorii ovs-type și bridge-fd din `ifreload -a -s` au fost observate în test; nu schimba tipurile OVS doar pentru a suprima avertismentele. Verifică starea efectivă și logurile.
+
+Verificări după aplicare și după reboot (din consolă):
+```bash
+ovs-vsctl list-ports vmbr0
+ovs-vsctl list-ports vmbr1
+ovs-appctl lacp/show bond0 | head -5
+ovs-appctl lacp/show bond1 | head -5
+ovs-appctl bond/show bond0
+ovs-appctl bond/show bond1
+ip -4 -br addr
+ip route
+ping -c 3 <GATEWAY_MGMT>
+```
+
+Dacă managementul dispare după aplicare, inspectează configurația și obiectele OVS din consola locală. Dacă lipsesc componentele configurate, încearcă `ifup -f bond0`, `ifup -f mgmt13`, `ifup -f bond1`, apoi verifică din nou. Dacă nu reușește, folosește backupul și rollbackul coordonat cu switch-ul. Nu reporni repetat fără diagnostic.
+
+**Stare test:** OVS corectat manual: negociere LACP CORE/DMZ, ping gateway (fără pierderi în testul scurt) și reaplicare SDN confirmate. Instalare curată cu noul script, reboot, failover și trafic VM pe fiecare VLAN: încă nevalidate. Varianta Linux Bridge nu a fost testată live.
