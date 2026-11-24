@@ -6,7 +6,7 @@ Two mutually exclusive installers reproduce a VMware-style port-group structure 
 
 - **Linux Bridge variant**: `install-linux-bridge.sh` — Linux bonding 802.3ad + VLAN-aware bridges.
 - **Open vSwitch variant**: `install-ovs.sh` — OVS bridges + LACP OVSBond + tagged internal management port.
-- **Cisco template**: `cisco-3560g-lacp.cfg` — Po10 = Gi0/27-28 CORE, Po11 = Gi0/29-30 DMZ (confirm actual cables before applying).
+- **Cisco template**: `cisco-3560g-lacp.cfg` — Po10 = Gi0/27-28 CORE, Po11 = Gi0/29-30 DMZ, descriptive labels SERVER-101-CORE / SERVER-101-DMZ. Catalyst 3560G supports channel IDs 1–48; Po101/Po102 are invalid.
 - **Runbook**: `docs/IMPLEMENTATION-RO.md` — migration order, validation, recovery.
 
 ## Logical design
