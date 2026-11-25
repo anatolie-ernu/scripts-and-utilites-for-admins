@@ -128,4 +128,6 @@ Dacă managementul dispare după aplicare, inspectează configurația și obiect
 
 ## Instalatoare interactive suplimentare
 
+Ghid complet actualizat: [Instalare interactivă CORE/DMZ](INTERACTIVE-INSTALLATION-RO.md).
+
 Scripturile originale rămân neschimbate. Execută `bash install-ovs-interactive.sh --install` sau `bash install-linux-bridge-interactive.sh --install`. Alege 1 CORE, 2 DMZ, 3 CORE + DMZ. Sunt afișate NIC-urile Ethernet fizice detectate (nume, MAC, stare, master); introdu minimum două nume distincte separate prin virgulă pentru fiecare zonă selectată. Nu se acceptă suprapunerea între zone. Toate NIC-urile selectate primesc auto. CORE solicită IP/gateway VLAN 13 și necesită includerea uplinkului existent al bridge-ului vmbr0; DMZ-only păstrează managementul existent. Se generează doar zonele și VNets selectate (8/2/10). Pentru automatizare folosește NETWORK_ZONE=core|dmz|both, CORE_NICS și DMZ_NICS, plus MGMT_IP/MGMT_GW când CORE este selectat. Configurațiile SDN existente, modificările GUI în așteptare și conflictele de interfețe necesită reconciliere manuală. Pe Cisco verifică asocierea fizică a NIC-urilor și aplică numai blocul zonei selectate; nu modifica Po40 PBS. Nu există reload sau reboot automat. Testele live pentru cele șase combinații rămân necesare.
