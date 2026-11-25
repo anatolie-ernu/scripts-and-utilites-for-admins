@@ -39,3 +39,25 @@ The RFC 5737 addresses above are examples. Scripts do not automatically restart 
 **Not interchangeable:** do not run OVS and Linux Bridge installers one after another or use Linux bonds in OVS bridges.
 
 This implementation is a staging template, not a zero-downtime migration. A manually corrected OVS deployment was validated on 2026-11-24: both bonds negotiated LACP, management reached its gateway and SDN apply preserved the uplinks and management while renaming VLAN 50 to Radio. The updated installer has not yet been tested end-to-end on a fresh node; a subsequent reboot exposed missing automatic interface activation. The operator reports resolution after explicitly adding auto for every physical NIC, in addition to the OVS bridges, bonds and management port; the OVS installer now includes those directives. Fresh-install testing, independent post-reboot log verification, failover and VM traffic tests remain pending. Linux Bridge variant remains untested live.
+
+## Additional interactive installers
+
+The original fixed-topology scripts remain unchanged. Use either new standalone installer:
+
+```bash
+bash install-ovs-interactive.sh --install
+# OR
+bash install-linux-bridge-interactive.sh --install
+```
+
+Choose CORE only (8 VNets), DMZ only (2 VNets), or CORE + DMZ (10 VNets). The installer discovers physical Ethernet NICs, displays name/MAC/state/master and requests a comma-separated list for each selected zone. At least two distinct NICs per selected LACP bond are required; names are not hardcoded. CORE uses bond0/vmbr0 and VLAN 13 management; DMZ uses bond1/vmbr1 and preserves existing management when selected alone. CORE migration requires the existing simple vmbr0 uplink to belong to the chosen CORE list. Unselected interface definitions are preserved; existing SDN, pending GUI edits and conflicting NIC configuration require manual reconciliation.
+
+For unattended staging:
+
+```bash
+NETWORK_ZONE=core CORE_NICS=eno1,eno2 MGMT_IP=192.0.2.41 MGMT_GW=192.0.2.1 bash install-ovs-interactive.sh --install
+NETWORK_ZONE=dmz DMZ_NICS=eno3,eno4 bash install-ovs-interactive.sh --install
+NETWORK_ZONE=both CORE_NICS=eno1,eno2 DMZ_NICS=eno3,eno4 MGMT_IP=192.0.2.41 MGMT_GW=192.0.2.1 bash install-linux-bridge-interactive.sh --install
+```
+
+These are fresh-SDN staging installers, not incremental SDN migration tools. Switch port mappings must match the selected NICs; apply only the relevant CORE or DMZ block after verifying group ownership. PBS Po40 remains untouched. No automatic network reload or reboot. The six topology/backend combinations require on-host validation.
