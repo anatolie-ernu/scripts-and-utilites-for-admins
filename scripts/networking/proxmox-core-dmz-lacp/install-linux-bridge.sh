@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 # ERNU.EU | Proxmox Linux Bridge / LACP / CORE-DMZ
 # STAGING ONLY: no ifreload, no reboot, no switch modifications.
+# Cisco example: Po41 CORE (Gi0/27-28), Po42 DMZ (Gi0/29-30); never modify reserved PBS Po40.
 # Example: MGMT_IP=192.0.2.41 MGMT_GW=192.0.2.1 bash "$0" --install
 MODE='linux'
 NETFILE='/etc/network/interfaces'
