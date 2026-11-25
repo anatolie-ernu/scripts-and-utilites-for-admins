@@ -49,7 +49,7 @@ ls -l /etc/network/interfaces.d/
 ls -l /etc/pve/sdn/
 ```
 
-Pentru OVS instalează în prealabil openvswitch-switch, cu managementul funcțional. Necesare: Bash, Python 3, ip, ifquery, pvesh. Scriptul refuză SDN deja definit, modificări GUI pendinte, include-uri neprevăzute și conflicte de interfețe. Pentru CORE, bridge-ul inițial vmbr0 trebuie să fie un Linux Bridge simplu cu un singur uplink inclus în lista CORE. Configurațiile complexe necesită migrare manuală.
+Pentru OVS, scriptul verifică automat pachetul openvswitch-switch. Dacă lipsește, solicită acordul `Install openvswitch-switch and start its service? [y/N]`. La răspuns y execută apt-get update și apt-get install -y openvswitch-switch, pornește serviciul dacă este oprit, îl activează la boot și verifică baza OVS. Refuzul sau o eroare oprește staging-ul. Pentru instalare neinteractivă setează explicit INSTALL_OVS=yes. Managementul existent trebuie să rămână funcțional pe durata instalării APT. Instalatoarele Linux Bridge nu instalează OVS. Necesare: Bash, Python 3, ip, ifquery, pvesh. Scriptul refuză SDN deja definit, modificări GUI pendinte, include-uri neprevăzute și conflicte de interfețe. Pentru CORE, bridge-ul inițial vmbr0 trebuie să fie un Linux Bridge simplu cu un singur uplink inclus în lista CORE. Configurațiile complexe necesită migrare manuală.
 
 ## 4. Instalare
 

@@ -42,7 +42,7 @@ Pe Cisco: `show interfaces status`, `show etherchannel summary`, `show running-c
 
 ## Migrare recomandată
 1. Confirmă IP-ul nou liber, gateway-ul și accesul la consolă/iLO. Portul switch-ului în ACCESS și IP-ul hostului vechi **vor înceta să funcționeze** după trecere.
-2. Instalează `openvswitch-switch` numai pentru varianta OVS, în timp ce rețeaua veche este operațională.
+2. Instalatoarele OVS verifică `openvswitch-switch`, solicită confirmarea instalării dacă lipsește, apoi pornesc și activează serviciul la boot și verifică baza OVS. Pentru automatizare setează `INSTALL_OVS=yes`. Păstrează rețeaua veche operațională pentru APT. Varianta Linux Bridge nu necesită OVS.
 3. Pregătește configurația: `MGMT_IP=<IP> MGMT_GW=<IP_GW> bash install-ovs.sh --install` sau `install-linux-bridge.sh`. Instalatorul scrie fișiere și backup; **nu** execută ifreload/reboot.
 4. Revizuiește fișierul `/etc/network/interfaces`, `/etc/hosts`, `/etc/pve/sdn/zones.cfg`, `/etc/pve/sdn/vnets.cfg`. În special, confirmă că nu există interfețe personalizate în `interfaces.d`.
 5. Pregătește Cisco Po41 și LACP active pe portul real conectat la nic0. Native VLAN nu trebuie să fie 13. Configurează allowed VLAN list exact. Cisco 3560G cu encapsularea implicită `Auto` respinge `switchport mode trunk`; configurează obligatoriu `switchport trunk encapsulation dot1q` înainte de `switchport mode trunk` atât pe Po41/Po42, cât și pe Gi0/27–30. Dacă interfețele sunt deja membre EtherChannel și IOS refuză modificarea, verifică configurația înainte de a scoate membrii din channel-group.

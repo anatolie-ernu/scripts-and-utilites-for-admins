@@ -23,7 +23,7 @@ Proxmox SDN defines VNet IDs `Radio, CoreMon, CoreVoip, CoreApp, UserLAN, CoreDB
 ## Preparing on a test node
 
 1. Check the current uplink maps to `nic0`, the other three NICs are present, the existing management connectivity, and the actual physical Cisco switch ports.
-2. For the OVS variant, **before any reboot**, install `openvswitch-switch` while the old management is functional.
+2. Both OVS installers detect a missing `openvswitch-switch` package and request approval to install it via APT while the old management is functional. They start and enable the service and verify the OVS database before staging. For unattended installation explicitly set `INSTALL_OVS=yes`; declining or a failed install stops staging. Linux Bridge needs no OVS package.
 3. Stage only one variant using real, local values (do not commit values to this public repository):
 
 ```bash
