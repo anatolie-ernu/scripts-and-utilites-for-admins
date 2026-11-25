@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 # ERNU.EU | Proxmox Open vSwitch / LACP / CORE-DMZ
 # STAGING ONLY: no ifreload, no reboot, no switch modifications.
+# Cisco example: Po41 CORE (Gi0/27-28), Po42 DMZ (Gi0/29-30); never modify reserved PBS Po40.
 # Example: MGMT_IP=192.0.2.41 MGMT_GW=192.0.2.1 bash "$0" --install
 MODE='ovs'
 NETFILE='/etc/network/interfaces'
@@ -182,6 +183,7 @@ vnet: DMZInfra
 VNETS
 echo "STAGED SUCCESSFULLY: $MODE; backup=$BACKUP"
 echo 'No live reload or reboot was performed. Validate Cisco LACP/trunks before reboot.'
+echo 'WARNING: OVS boot persistence is not yet validated; use local console and the recovery runbook.'
 echo "Proxmox management target: https://$MGMT_IP:8006"
 echo 'After management is back, verify both LACP bonds and gateway from console.'
 echo 'Preview SDN: pvesh get /cluster/sdn/dry-run --node "$(hostname -s)"'
