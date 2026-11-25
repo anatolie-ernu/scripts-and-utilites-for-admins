@@ -11,6 +11,23 @@ BACKUP="/root/pve-network-backup-$(date +%Y%m%d-%H%M%S)"
 fail(){ echo "ERROR: $*" >&2; exit 1; }
 [[ "${1:-}" == '--install' ]] || fail 'usage: MGMT_IP=... MGMT_GW=... bash script.sh --install'
 [[ $EUID -eq 0 ]] || fail 'run as root'
+# Choose the topology before modifying any files.
+if [[ -z "${NETWORK_ZONE:-}" ]]; then
+    [[ -t 0 ]] || fail 'set NETWORK_ZONE=core, dmz or both for noninteractive use'
+    printf '%s\n' 'Select network configuration:' '1) CORE only' '2) DMZ only' '3) CORE + DMZ'
+    read -r -p 'Selection [1/2/3]: ' NETWORK_ZONE
+fi
+case "$NETWORK_ZONE" in
+    1|core) NETWORK_ZONE=core; CORE=1; DMZ=0 ;;
+    2|dmz) NETWORK_ZONE=dmz; CORE=0; DMZ=1 ;;
+    3|both) NETWORK_ZONE=both; CORE=1; DMZ=1 ;;
+    *) fail 'invalid selection; choose core, dmz or both' ;;
+esac
+if (( CORE )); then
+    if [[ -t 0 ]]; then
+        [[ -n "${MGMT_IP:-}" ]] || read -r -p 'Management IPv4 (VLAN 13): ' MGMT_IP
+        [[ -n "${MGMT_GW:-}" ]] || read -r -p 'Management gateway: ' MGMT_GW
+    fi
 : "${MGMT_IP:?set MGMT_IP as an unused host address}"
 : "${MGMT_GW:?set MGMT_GW to the VLAN13 gateway}"
 : "${MGMT_VLAN:=13}"
@@ -23,22 +40,30 @@ gw=ipaddress.IPv4Address(sys.argv[2])
 if ip not in ipaddress.IPv4Network(f'{ip}/24', strict=False) or gw not in ipaddress.IPv4Network(f'{ip}/24', strict=False):
     raise SystemExit('gateway not in management /24 subnet')
 PY
-for nic in nic0 nic1 nic2 nic3; do [[ -e "/sys/class/net/$nic" ]] || fail "missing NIC $nic"; done
+fi
+NICS=()
+if (( CORE )); then NICS+=(nic0 nic1); fi
+if (( DMZ )); then NICS+=(nic2 nic3); fi
+for nic in "${NICS[@]}"; do [[ -e "/sys/class/net/$nic" ]] || fail "missing NIC $nic"; done
 for cmd in ifquery ip pvesh python3; do command -v "$cmd" >/dev/null || fail "missing command $cmd"; done
 command -v ovs-vsctl >/dev/null || fail 'install openvswitch-switch before staging'
 dpkg-query -W -f='${Status}' openvswitch-switch 2>/dev/null | grep -q 'install ok installed' || fail 'install openvswitch-switch first'
 [[ -f "$NETFILE" && -d "$SDNDIR" && -w "$SDNDIR" ]] || fail 'network file or writable pmxcfs SDN missing'
 [[ ! -s "$SDNDIR/zones.cfg" && ! -s "$SDNDIR/vnets.cfg" ]] || fail 'existing SDN configuration: manual merge required'
-for file in "$NETFILE" /etc/network/interfaces.new; do
-    [[ -f "$file" ]] || continue
-    grep -Eq '^[[:space:]]*bridge-ports[[:space:]]+nic0[[:space:]]*$' "$file" || fail "unexpected uplink in $file"
-    if grep -Eq '^[[:space:]]*(iface|auto)[[:space:]]+(bond[01]|vmbr1|mgmt13|vmbr0\.13)([[:space:]]|$)' "$file"; then
-        fail "already migrated or contains network definitions to review: $file"
-    fi
-    if grep -E '^[[:space:]]*(source|source-directory)[[:space:]]+' "$file" | grep -Ev '^[[:space:]]*source[[:space:]]+/etc/network/interfaces\.d/\*[[:space:]]*$'; then
-        fail "unexpected include in $file"
-    fi
-done
+# Existing SDN and pending GUI edits require an explicit manual merge.
+[[ ! -e /etc/network/interfaces.new ]] || fail 'pending GUI network changes; reconcile manually'
+if (( CORE )); then
+    grep -Eq '^[[:space:]]*bridge-ports[[:space:]]+nic0[[:space:]]*$' "$NETFILE" || fail 'expected initial management uplink nic0'
+fi
+if grep -E '^[[:space:]]*(source|source-directory)[[:space:]]+' "$NETFILE" | grep -Ev '^[[:space:]]*source[[:space:]]+/etc/network/interfaces\.d/\*[[:space:]]*$'; then
+    fail 'unexpected network include; reconcile manually'
+fi
+if (( DMZ )); then
+    for nic in nic2 nic3; do
+        [[ ! -e "/sys/class/net/$nic/master" ]] || fail "$nic already has a master"
+        [[ -z "$(ip -o addr show dev "$nic" scope global)" ]] || fail "$nic already has a global IP address"
+    done
+fi
 if [[ -d /etc/network/interfaces.d ]] && grep -RIlE '^[[:space:]]*(auto|iface|mapping|source|source-directory)[[:space:]]+' /etc/network/interfaces.d 2>/dev/null | grep -q .; then
     fail 'interfaces.d contains active definitions; reconcile before migrating'
 fi
@@ -50,18 +75,67 @@ for f in zones.cfg vnets.cfg; do [[ ! -f "$SDNDIR/$f" ]] || cp -a "$SDNDIR/$f" "
 ip -br a > "$BACKUP/ip.before.txt"; ip route > "$BACKUP/routes.before.txt"
 TMP="$(mktemp /etc/network/.interfaces.XXXXXX)"
 trap 'rm -f "$TMP"' EXIT
-cat > "$TMP" <<'CONFIG'
-auto lo
-iface lo inet loopback
+# Preserve unselected interfaces and existing management in DMZ-only mode.
+# Only remove simple manual declarations of selected NICs, plus the original
+# single-uplink Linux management bridge when CORE migration is requested.
+python3 - "$NETFILE" "$TMP" "$CORE" "$DMZ" <<'PY'
+import re, sys
+from pathlib import Path
+src, dst = map(Path, sys.argv[1:3])
+core, dmz = (x == "1" for x in sys.argv[3:])
+nics = ({"nic0", "nic1"} if core else set()) | ({"nic2", "nic3"} if dmz else set())
+targets = nics | ({"vmbr0"} if core else set())
+reserved = ({"bond0", "mgmt13", "vmbr0.13"} if core else set()) | ({"bond1", "vmbr1"} if dmz else set())
+seen = set()
+output = []
+removed = None
+for line in src.read_text().splitlines(keepends=True):
+    code = line.split("#", 1)[0].strip()
+    words = code.split()
+    if not words:
+        output.append(line)
+        continue
+    head = words[0]
+    header = head in ("iface", "auto", "allow-hotplug", "source", "source-directory", "mapping") or head.startswith("allow-")
+    if removed and not header:
+        if removed in nics:
+            raise SystemExit(f"Selected NIC {removed} has options; reconcile manually")
+        if head not in ("address", "netmask", "gateway", "bridge-ports", "bridge-stp", "bridge-fd"):
+            raise SystemExit(f"Custom management option {head}; reconcile manually")
+        if head == "bridge-ports" and words[1:] != ["nic0"]:
+            raise SystemExit("Unexpected management uplink")
+        continue
+    if header:
+        removed = None
+    if head in ("auto", "allow-hotplug") and targets.intersection(words[1:]):
+        remaining = [w for w in words[1:] if w not in targets]
+        if remaining:
+            output.append(head + " " + " ".join(remaining) + "\n")
+        continue
+    if head == "iface" and len(words) >= 2 and words[1] in targets:
+        name = words[1]
+        allowed = [["inet", "manual"]] if name in nics else [["inet", "static"], ["inet", "manual"]]
+        if words[2:] not in allowed or name in seen:
+            raise SystemExit(f"Unexpected or duplicate stanza for {name}; reconcile manually")
+        seen.add(name)
+        removed = name
+        continue
+    # Detect dependencies or conflicting interface definitions outside the removed stanzas.
+    for name in targets | reserved:
+        if re.search(r"(?<![\w.-])" + re.escape(name) + r"(?![\w-])", code):
+            raise SystemExit(f"Interface {name} already referenced; reconcile manually")
+    output.append(line)
+if core and "vmbr0" not in seen:
+    raise SystemExit("Expected initial vmbr0 stanza missing")
+dst.write_text("".join(output).rstrip() + "\n")
+PY
+if (( CORE )); then
+    cat >> "$TMP" <<'CONFIG'
 
 auto nic0
 iface nic0 inet manual
 auto nic1
 iface nic1 inet manual
-auto nic2
-iface nic2 inet manual
-auto nic3
-iface nic3 inet manual
 
 auto vmbr0
 iface vmbr0 inet manual
@@ -85,6 +159,15 @@ iface mgmt13 inet static
     ovs_type OVSIntPort
     ovs_bridge vmbr0
     ovs_options tag=13
+CONFIG
+fi
+if (( DMZ )); then
+    cat >> "$TMP" <<'CONFIG'
+
+auto nic2
+iface nic2 inet manual
+auto nic3
+iface nic3 inet manual
 
 auto vmbr1
 iface vmbr1 inet manual
@@ -99,11 +182,16 @@ iface bond1 inet manual
     ovs_bridge vmbr1
     ovs_bonds nic2 nic3
     ovs_options bond_mode=balance-tcp lacp=active other_config:lacp-time=fast trunks=217,218
-
-source /etc/network/interfaces.d/*
 CONFIG
-sed -i -e "s/@MGMT_IP@/$MGMT_IP/g" -e "s/@MGMT_GW@/$MGMT_GW/g" "$TMP"
+fi
+if ! grep -Eq '^[[:space:]]*source[[:space:]]+/etc/network/interfaces\.d/\*[[:space:]]*$' "$TMP"; then
+    printf '\nsource /etc/network/interfaces.d/*\n' >> "$TMP"
+fi
+if (( CORE )); then
+    sed -i -e "s/@MGMT_IP@/$MGMT_IP/g" -e "s/@MGMT_GW@/$MGMT_GW/g" "$TMP"
+fi
 ifquery --interfaces "$TMP" --list >/dev/null || fail 'ifquery parse failed'
+if (( CORE )); then
 # Only edit hostname mapping when an exact current hostname record exists.
 python3 - "$MGMT_IP" <<'PY'
 import sys
@@ -124,17 +212,17 @@ for i,line in enumerate(lines):
 if not found: raise SystemExit('hostname mapping not found in /etc/hosts')
 p.write_text(''.join(lines))
 PY
+fi
 # Preserve GUI pending file for rollback, remove it so it cannot override staging.
 [[ ! -e /etc/network/interfaces.new ]] || mv /etc/network/interfaces.new "$BACKUP/interfaces.new.pending"
 install -m 0644 "$TMP" "$NETFILE"
-cat > "$SDNDIR/zones.cfg" <<'ZONES'
-vlan: CORE
-    bridge vmbr0
-
-vlan: DMZ
-    bridge vmbr1
-ZONES
-cat > "$SDNDIR/vnets.cfg" <<'VNETS'
+{
+    if (( CORE )); then printf 'vlan: CORE\n    bridge vmbr0\n\n'; fi
+    if (( DMZ )); then printf 'vlan: DMZ\n    bridge vmbr1\n\n'; fi
+} > "$SDNDIR/zones.cfg"
+{
+    if (( CORE )); then
+        cat <<'VNETS'
 vnet: Radio
     zone CORE
     alias CORE-RadioMon
@@ -175,6 +263,10 @@ vnet: Mgmt
     alias Mgmt
     tag 13
 
+VNETS
+    fi
+    if (( DMZ )); then
+        cat <<'VNETS'
 vnet: DMZApp
     zone DMZ
     alias DMZ-Application
@@ -185,11 +277,15 @@ vnet: DMZInfra
     alias DMZ-Infrastructure
     tag 217
 VNETS
-echo "STAGED SUCCESSFULLY: $MODE; backup=$BACKUP"
-echo 'No live reload or reboot was performed. Validate Cisco LACP/trunks before reboot.'
-echo 'OVS: all physical NICs, bridges, bonds and management port are configured for autostart.'
-echo 'Validate LACP, management and SDN after reboot from the local console.'
-echo "Proxmox management target: https://$MGMT_IP:8006"
-echo 'After management is back, verify both LACP bonds and gateway from console.'
+    fi
+} > "$SDNDIR/vnets.cfg"
+echo "STAGED SUCCESSFULLY: $MODE / $NETWORK_ZONE; backup=$BACKUP"
+echo 'No live reload or reboot was performed. Validate selected Cisco LACP/trunks before reboot.'
+if (( CORE )); then
+    echo "Proxmox management target: https://$MGMT_IP:8006"
+else
+    echo 'DMZ only: existing management configuration and /etc/hosts preserved.'
+fi
+echo 'After boot, validate selected LACP bonds and management from the local console.'
 echo 'Preview SDN: pvesh get /cluster/sdn/dry-run --node "$(hostname -s)"'
 echo 'Apply SDN from console: pvesh set /cluster/sdn; verify uplinks and management again.'
