@@ -25,8 +25,6 @@ if ip not in ipaddress.IPv4Network(f'{ip}/24', strict=False) or gw not in ipaddr
 PY
 for nic in nic0 nic1 nic2 nic3; do [[ -e "/sys/class/net/$nic" ]] || fail "missing NIC $nic"; done
 for cmd in ifquery ip pvesh python3; do command -v "$cmd" >/dev/null || fail "missing command $cmd"; done
-command -v ovs-vsctl >/dev/null || fail 'install openvswitch-switch before staging'
-dpkg-query -W -f='${Status}' openvswitch-switch 2>/dev/null | grep -q 'install ok installed' || fail 'install openvswitch-switch first'
 [[ -f "$NETFILE" && -d "$SDNDIR" && -w "$SDNDIR" ]] || fail 'network file or writable pmxcfs SDN missing'
 [[ ! -s "$SDNDIR/zones.cfg" && ! -s "$SDNDIR/vnets.cfg" ]] || fail 'existing SDN configuration: manual merge required'
 for file in "$NETFILE" /etc/network/interfaces.new; do
@@ -103,6 +101,29 @@ iface bond1 inet manual
 source /etc/network/interfaces.d/*
 CONFIG
 sed -i -e "s/@MGMT_IP@/$MGMT_IP/g" -e "s/@MGMT_GW@/$MGMT_GW/g" "$TMP"
+# Install missing OVS dependency only with explicit approval, while management is still online.
+if ! dpkg-query -W -f='${Status}' openvswitch-switch 2>/dev/null | grep -qx 'install ok installed'; then
+    echo 'Open vSwitch package is not installed.'
+    approval="${INSTALL_OVS:-}"
+    if [[ -z "$approval" && -t 0 ]]; then
+        read -r -p 'Install openvswitch-switch and start its service? [y/N]: ' approval
+    fi
+    case "$approval" in
+        y|Y|yes|YES|1) ;;
+        *) fail 'OVS installation declined; no network configuration changed (set INSTALL_OVS=yes for unattended installation)' ;;
+    esac
+    command -v apt-get >/dev/null || fail 'apt-get not available'
+    apt-get update || fail 'APT update failed; check connectivity and configured repositories'
+    apt-get install -y openvswitch-switch || fail 'Open vSwitch package installation failed'
+fi
+command -v ovs-vsctl >/dev/null || fail 'ovs-vsctl missing after package check'
+if ! systemctl is-active --quiet openvswitch-switch; then
+    systemctl start openvswitch-switch || fail 'Open vSwitch service could not start'
+fi
+systemctl enable openvswitch-switch || fail 'Open vSwitch service could not be enabled at boot'
+systemctl is-active --quiet openvswitch-switch || fail 'Open vSwitch service is not active'
+ovs-vsctl --timeout=10 show >/dev/null || fail 'Open vSwitch database is not responding'
+echo 'Open vSwitch package, service and database: OK'
 ifquery --interfaces "$TMP" --list >/dev/null || fail 'ifquery parse failed'
 # Only edit hostname mapping when an exact current hostname record exists.
 python3 - "$MGMT_IP" <<'PY'
