@@ -54,9 +54,13 @@ cat > "$TMP" <<'CONFIG'
 auto lo
 iface lo inet loopback
 
+auto nic0
 iface nic0 inet manual
+auto nic1
 iface nic1 inet manual
+auto nic2
 iface nic2 inet manual
+auto nic3
 iface nic3 inet manual
 
 auto vmbr0
@@ -183,7 +187,8 @@ vnet: DMZInfra
 VNETS
 echo "STAGED SUCCESSFULLY: $MODE; backup=$BACKUP"
 echo 'No live reload or reboot was performed. Validate Cisco LACP/trunks before reboot.'
-echo 'WARNING: OVS boot persistence is not yet validated; use local console and the recovery runbook.'
+echo 'OVS: all physical NICs, bridges, bonds and management port are configured for autostart.'
+echo 'Validate LACP, management and SDN after reboot from the local console.'
 echo "Proxmox management target: https://$MGMT_IP:8006"
 echo 'After management is back, verify both LACP bonds and gateway from console.'
 echo 'Preview SDN: pvesh get /cluster/sdn/dry-run --node "$(hostname -s)"'
