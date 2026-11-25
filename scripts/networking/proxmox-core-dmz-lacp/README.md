@@ -2,11 +2,12 @@
 
 **ERNU.EU | IT & Security Solutions** · reusable example, no internal infrastructure addresses published.
 
-Two mutually exclusive installers reproduce a VMware-style port-group structure with two physically separated uplink groups, Cisco Catalyst 3560G LACP, Proxmox SDN zones, and named VNets.
+Four installers (two backends, each with a fixed and an interactive variant; choose exactly one) reproduce a VMware-style port-group structure with two physically separated uplink groups, Cisco Catalyst 3560G LACP, Proxmox SDN zones, and named VNets.
 
 - **Linux Bridge variant**: `install-linux-bridge.sh` — Linux bonding 802.3ad + VLAN-aware bridges.
 - **Open vSwitch variant**: `install-ovs.sh` — OVS bridges + LACP OVSBond + tagged internal management port.
 - **Cisco template**: `cisco-3560g-lacp.cfg` — Po41 = Gi0/27-28 CORE, Po42 = Gi0/29-30 DMZ, descriptive labels SERVER-101-CORE / SERVER-101-DMZ. Catalyst 3560G supports channel IDs 1–48; Po101/Po102 are invalid.
+- **Interactive runbook (RO)**: [docs/INTERACTIVE-INSTALLATION-RO.md](docs/INTERACTIVE-INSTALLATION-RO.md) — all three modes, physical NIC selection, unattended usage, validation and rollback.
 - **Runbook**: `docs/IMPLEMENTATION-RO.md` — migration order, validation, recovery.
 
 ## Logical design
